@@ -56,6 +56,7 @@ namespace PlacesOfInterestMod
 
             _ = _serverApi.ChatCommands.Create()
                 .WithName("interesting")
+                .WithAlias("tag")
                 .RequiresPlayer()
                 .RequiresPrivilege(Privilege.chat)
                 .WithDescription(Lang.Get("places-of-interest-mod:interestingCommandDescription"))
@@ -97,6 +98,7 @@ namespace PlacesOfInterestMod
 
             _serverApi.ChatCommands.Create()
                 .WithName("findInterestingPlace")
+                .WithAlias("dist")
                 .RequiresPlayer()
                 .RequiresPrivilege(Privilege.chat)
                 .WithDescription(Lang.Get("places-of-interest-mod:findInterestingPlaceCommandDescription"))
@@ -136,17 +138,18 @@ namespace PlacesOfInterestMod
                         Lang.Get(
                             "places-of-interest-mod:foundNearestPlace",
                             FormTagsText(nearestPlace.Tags, []),
-                            playerPosition.ToXZ().DistanceTo(nearestPlace.XYZ.ToXZ()),
-                            nearestPlace.XYZ.Y - playerPosition.Y));
+                            (int)Math.Round(playerPosition.ToXZ().DistanceTo(nearestPlace.XYZ.ToXZ())),
+                            (int)Math.Round(nearestPlace.XYZ.Y - playerPosition.Y)));
                 });
 
             _serverApi.ChatCommands.Create()
                 .WithName("whatsSoInteresting")
+                .WithAlias("tags")
                 .RequiresPlayer()
                 .RequiresPrivilege(Privilege.chat)
                 .WithDescription(Lang.Get("places-of-interest-mod:whatsSoInterestingCommandDescription"))
                 .WithArgs(
-                    _serverApi.ChatCommands.Parsers.OptionalInt("radius", 16))
+                    _serverApi.ChatCommands.Parsers.OptionalInt("radius", 100))
                 .HandleWith(TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     // NOTE: Arg is guaranteed to exist.
@@ -228,6 +231,8 @@ namespace PlacesOfInterestMod
             }
             else
             {
+                List<PlaceOfInterest> placesToRemove = [];
+
                 foreach (PlaceOfInterest place in placesCloseToPlayer)
                 {
                     foreach (string tag in tagsToAdd)
@@ -238,6 +243,15 @@ namespace PlacesOfInterestMod
                     {
                         place.Tags.Remove(tag);
                     }
+                    if (place.Tags.Count == 0)
+                    {
+                        placesToRemove.Add(place);
+                    }
+                }
+
+                foreach (PlaceOfInterest place in placesToRemove)
+                {
+                    allPlaces.Remove(place);
                 }
             }
         }
@@ -275,8 +289,11 @@ namespace PlacesOfInterestMod
             IPlayer player,
             out List<PlaceOfInterest> places)
         {
-            places = SerializerUtil.Deserialize<List<PlaceOfInterest>>(
-                player.WorldData.GetModdata(_placesOfInterestModDataKey), []);
+            places =
+                SerializerUtil.Deserialize<List<PlaceOfInterest>>(
+                    player.WorldData.GetModdata(_placesOfInterestModDataKey), [])
+                .Where(x => x.Tags is not null && x.Tags.Count > 0)
+                .ToList();
         }
 
         private static void ParseTags(
