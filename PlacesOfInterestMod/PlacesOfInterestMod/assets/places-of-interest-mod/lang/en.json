@@ -1,0 +1,15 @@
+{
+  "hello": "LANG hello world!",
+  "clearInterestingPlacesCommandDescription": "LANG Clears all recorded places.",
+  "clearedInterestingPlaces": "LANG Cleared all recorded places.",
+  "interestingCommandDescription": "LANG Records current position with tags. If position is already recorded it also can modify tags (add \"-\" in front of a tag to remove it). All positions will have tag called \"places\".",
+  "interestingCommandResult": "LANG Recorded interesting place with tags [{0}].",
+  "interestingCommandExample1": "LANG /interesting iron ore # records place with tags [iron] and [ore] (and also [place]).",
+  "interestingCommandExample2": "LANG /interesting cat -dog # records place with tag [cat] and if place is already recorded removes its [dog] tag.",
+  "findInterestingPlaceCommandDescription": "LANG Finds a recorded place that has given tags.",
+  "noMatchingPlacesFound": "LANG No matching places found for tags {0}.",
+  "foundNearestPlace": "LANG Found nearest place with tags {0}.\nDistance: {1}\nHeight difference: {2}",
+  "whatsSoInterestingCommandDescription": "LANG Shows tags at this place.",
+  "noInterestingTagsFound": "LANG There are no records for this place.",
+  "whatsSoInterestingResult": "LANG Tags: {0}"
+}

@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36603.0 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlacesOfInterestMod", "PlacesOfInterestMod\PlacesOfInterestMod\PlacesOfInterestMod.csproj", "{21EEB78A-202C-4BC6-8986-00748132BB19}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CakeBuild", "PlacesOfInterestMod\ZZCakeBuild\CakeBuild.csproj", "{0E1733E8-140E-453A-AC32-6BFF127A22EB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{21EEB78A-202C-4BC6-8986-00748132BB19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21EEB78A-202C-4BC6-8986-00748132BB19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21EEB78A-202C-4BC6-8986-00748132BB19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21EEB78A-202C-4BC6-8986-00748132BB19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E1733E8-140E-453A-AC32-6BFF127A22EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E1733E8-140E-453A-AC32-6BFF127A22EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E1733E8-140E-453A-AC32-6BFF127A22EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E1733E8-140E-453A-AC32-6BFF127A22EB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E182B0DE-5497-4316-A4FB-31861ABF7E76}
+	EndGlobalSection
+EndGlobal
