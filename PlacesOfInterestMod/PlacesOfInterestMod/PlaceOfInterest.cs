@@ -25,9 +25,9 @@ namespace PlacesOfInterestMod
         [ProtoMember(2)]
         public required List<Tag> Tags { get; init; }
 
-        public void Validate()
+        public void Validate(bool allowNoTags = false)
         {
-            if (Tags.Count == 0)
+            if (!allowNoTags && Tags.Count == 0)
             {
                 throw new Exception("PlaceOfInterest has no tags");
             }
@@ -90,7 +90,7 @@ namespace PlacesOfInterestMod
                 Tags.RemoveAll(x => x.Name == tagName);
             }
 
-            Validate();
+            Validate(allowNoTags: true);
         }
     }
 
