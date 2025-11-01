@@ -254,7 +254,15 @@ namespace PlacesOfInterestMod
         {
             int day = Today();
 
-            placesByTags = places.Where(p => p.MatchesTags(day, includedTags, excludedTags)).ToList();
+            placesByTags = places
+                .Where(p =>
+                    p.MatchesTags(
+                        day,
+                        includedTags,
+                        excludedTags,
+                        wildcardsInIncludedTags: true,
+                        wildcardInExcludedTags: true))
+                .ToList();
         }
 
         private void UpdatePlacesCloseToPlayer(
@@ -301,7 +309,7 @@ namespace PlacesOfInterestMod
 
                 foreach (PlaceOfInterest place in placesCloseToPlayer)
                 {
-                    place.UpdateTags(tagsToAdd, startDay, endDay, tagsToRemove);
+                    place.UpdateTags(tagsToRemove, tagsToAdd, startDay, endDay);
 
                     if (place.Tags.Count == 0)
                     {

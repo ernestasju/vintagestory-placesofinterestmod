@@ -54,19 +54,28 @@ namespace PlacesOfInterestMod
         public bool MatchesTags(
             int day,
             string[] includedTags,
-            string[] excludedTags)
+            string[] excludedTags,
+            bool wildcardsInIncludedTags = false,
+            bool wildcardInExcludedTags = false)
         {
             HashSet<string> activeTags = GetActiveTagNames(day).ToHashSet();
 
-            return includedTags.All(tag => activeTags.Contains(tag)) && !excludedTags.Any(tag => activeTags.Contains(tag));
+            return
+                activeTags.ContainsAll(includedTags, wildcardMatching: wildcardsInIncludedTags) &&
+                !activeTags.ContainsAny(excludedTags, wildcardMatching: wildcardInExcludedTags);
         }
 
         public void UpdateTags(
+            string[] tagsToRemove,
             string[] tagsToAdd,
             int startDay,
-            int endDay,
-            string[] tagsToRemove)
+            int endDay)
         {
+            foreach (string tagName in tagsToRemove)
+            {
+                Tags.RemoveAll(x => x.Name.MatchesPattern(tagName, caseInsensitive: true, wildcardMatching: true));
+            }
+
             Dictionary<string, Tag> existingTags = Tags.ToDictionary(x => x.Name);
             foreach (string tagName in tagsToAdd)
             {
@@ -84,10 +93,6 @@ namespace PlacesOfInterestMod
                         EndDay = endDay,
                     });
                 }
-            }
-            foreach (string tagName in tagsToRemove)
-            {
-                Tags.RemoveAll(x => x.Name == tagName);
             }
 
             Validate(allowNoTags: true);
