@@ -60,6 +60,11 @@ namespace PlacesOfInterestMod
         {
             HashSet<string> activeTags = GetActiveTagNames(day).ToHashSet();
 
+            if (!includedTags.ContainsAny(["excluded", "hidden", "ignored"]))
+            {
+                excludedTags = ["excluded", "hidden", "ignored", ..excludedTags];
+            }
+
             return
                 activeTags.ContainsAll(includedTags, wildcardMatching: wildcardsInIncludedTags) &&
                 !activeTags.ContainsAny(excludedTags, wildcardMatching: wildcardInExcludedTags);
