@@ -13,5 +13,11 @@
   "foundNearestPlace": "Found nearest place with tags {0}.\nDistance: {1}\nHeight difference: {2}",
   "whatsSoInterestingCommandDescription": "Shows tags at this place.",
   "noInterestingTagsFound": "There are no records for this place.",
-  "whatsSoInterestingResult": "Tags: {0}"
+  "whatsSoInterestingResult": "Tags: {0}",
+  "editInterestingPlacesCommandDescription": "Edits tags in all recorded places around the current position.",
+  "editInterestingPlacesCommandExample1": "/editInterestingPlaces 0 coper ore -> -coper copper # fix typo",
+  "editInterestingPlacesCommandExample2": "/editInterestingPlaces 0 -home base -> -* # remove all bases except the home base",
+  "editInterestingPlacesCommandExample3": "/editInterestingPlaces 100 iron -> -iron # remove iron tag from places up to 100 distance away",
+  "editInterestingPlacesResultNoPlacesFound": "No matching places found within {0} blocks.",
+  "editInterestingPlacesResultUpdatedPlaces": "Updated {0} places with tags [{1}]."
 }

@@ -74,7 +74,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     Vec3d playerPosition = args.Caller.Pos;
 
                     ParseTags(
-                        args,
+                        args.LastArg?.ToString() ?? "",
                         out string[] includedTags,
                         out string[] excludedTags,
                         out int? startDayOffset,
@@ -133,7 +133,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     int day = this.Today();
 
                     ParseTags(
-                        args,
+                        args.LastArg?.ToString() ?? "",
                         out string[] includedTags,
                         out string[] excludedTags,
                         out int? _,
@@ -210,6 +210,100 @@ public class PlacesOfInterestModSystem : ModSystem
 
                     return TextCommandResult.Success(
                         Lang.Get("places-of-interest-mod:whatsSoInterestingResult", FormTagsText(uniqueTags, [])));
+                });
+
+        _serverApi.ChatCommands.Create()
+            .WithName("editInterestingPlaces")
+            .WithAlias("editTags")
+            .RequiresPlayer()
+            .RequiresPrivilege(Privilege.chat)
+            .WithDescription(Lang.Get("places-of-interest-mod:editInterestingPlacesCommandDescription"))
+            .WithExamples(
+                Lang.Get("places-of-interest-mod:editInterestingPlacesCommandExample1"),
+                Lang.Get("places-of-interest-mod:editInterestingPlacesCommandExample2"),
+                Lang.Get("places-of-interest-mod:editInterestingPlacesCommandExample3"))
+            .WithArgs(
+                _serverApi.ChatCommands.Parsers.OptionalInt("radius", 16),
+                _serverApi.ChatCommands.Parsers.OptionalAll("tags"))
+            .HandleWith(
+                TextCommandResult (TextCommandCallingArgs args) =>
+                {
+                    // NOTE: Arg is guaranteed to exist.
+                    int searchRadius = (int)args[0];
+
+                    if (searchRadius <= 0)
+                    {
+                        searchRadius = int.MaxValue;
+                    }
+
+                    Vec3d playerPosition = args.Caller.Pos;
+
+                    string tagQueriesText = $" {args.LastArg?.ToString() ?? ""} ";
+                    if (!tagQueriesText.Contains(" -> "))
+                    {
+                        tagQueriesText = " -> " + tagQueriesText.TrimStart();
+                    }
+
+                    if (tagQueriesText.Split(" -> ", 2) is not [string oldTags, string newTags])
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    ParseTags(
+                        oldTags,
+                        out string[] oldIncludedTags,
+                        out string[] oldExcludedTags,
+                        out int? _,
+                        out int? _);
+
+                    ParseTags(
+                        newTags,
+                        out string[] newIncludedTags,
+                        out string[] newExcludedTags,
+                        out int? newStartDayOffset,
+                        out int? newEndDayOffset);
+
+                    this.LoadPlaces(
+                        args.Caller.Player,
+                        out List<PlaceOfInterest> places);
+
+                    FindPlacesInRadius(
+                        places,
+                        playerPosition,
+                        searchRadius,
+                        out List<PlaceOfInterest> matchingPlaces);
+
+                    if (matchingPlaces.Count == 0)
+                    {
+                        return TextCommandResult.Success(
+                            Lang.Get("places-of-interest-mod:editInterestingPlacesResultNoPlacesFound", searchRadius, FormTagsText(oldIncludedTags, oldExcludedTags)));
+                    }
+
+                    FindPlacesByTags(
+                        matchingPlaces,
+                        oldIncludedTags,
+                        oldExcludedTags,
+                        out List<PlaceOfInterest> placesCloseToPlayer);
+
+                    if (placesCloseToPlayer.Count == 0)
+                    {
+                        return TextCommandResult.Success(
+                            Lang.Get("places-of-interest-mod:editInterestingPlacesResultNoPlacesFound", searchRadius, FormTagsText(oldIncludedTags, oldExcludedTags)));
+                    }
+
+                    this.UpdatePlacesCloseToPlayer(
+                        placesCloseToPlayer,
+                        places,
+                        playerPosition,
+                        newIncludedTags,
+                        newExcludedTags,
+                        newStartDayOffset,
+                        newEndDayOffset);
+
+                    SavePlaces(args.Caller.Player, places);
+
+                    return TextCommandResult.Success(
+                        Lang.Get("places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces", placesCloseToPlayer.Count, FormTagsText(newIncludedTags, newExcludedTags)));
                 });
 
         // NOTE: Commented for later.
@@ -433,7 +527,7 @@ public class PlacesOfInterestModSystem : ModSystem
     }
 
     private static void ParseTags(
-        TextCommandCallingArgs args,
+        string tagQueriesText,
         out string[] includedTags,
         out string[] excludedTags,
         out int? startDayOffset,
@@ -442,11 +536,9 @@ public class PlacesOfInterestModSystem : ModSystem
         startDayOffset = null;
         endDayOffset = null;
 
-        string tagsQueriesText = args.LastArg?.ToString() ?? "";
-
         List<string> includedTags2 = [];
         List<string> excludedTags2 = [];
-        foreach (string tagQueryText in tagsQueriesText.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        foreach (string tagQueryText in tagQueriesText.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
             Match match = Regex.Match(tagQueryText.ToLower(), @"^(?<Sign>[\+\-])?(?:(?<Number>[1-9]\d*)(?<Unit>[yqmwd])|(?<Tag>.*))$");
             if (!match.Success)
@@ -455,7 +547,7 @@ public class PlacesOfInterestModSystem : ModSystem
             }
 
             string sign = match.Groups["Sign"].Value;
-            ArgumentException.ThrowIfNullOrWhiteSpace(sign);
+            ArgumentNullException.ThrowIfNull(sign);
 
             if (match.Groups["Number"].Success && match.Groups["Unit"].Success)
             {
