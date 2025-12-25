@@ -29,6 +29,7 @@
   "pasteInterestingPlacesCommandExample1": ".pasteInterestingPlaces update # Will keep your tags and will add new tags from clipboard.",
   "pasteInterestingPlacesCommandExample2": ".pasteInterestingPlaces skip # Will only add new places that you haven't recorded. This is the default.",
   "pasteInterestingPlacesCommandExample3": ".pasteInterestingPlaces replace # Will add new places and also replace existing places with tags from clipboard.",
+  "pasteInterestingPlacesResultInvalidClipboard": "Cannot read places from clipboard.",
   "pasteInterestingPlacesResultUploadInProgress": "Uploading places to server.",
   "pasteInterestingPlacesResult": "Pasted {0} places from clipboard."
 }

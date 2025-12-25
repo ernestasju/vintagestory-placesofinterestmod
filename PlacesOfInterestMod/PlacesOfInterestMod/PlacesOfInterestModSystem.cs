@@ -94,7 +94,8 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, SavePlacesPacket packet) =>
             {
-                ILookup<Vec3i, PlaceOfInterest> newPlacesByRoughPlace = packet.Places.ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
+                List<PlaceOfInterest> newPlaces = packet.Places ?? [];
+                ILookup<Vec3i, PlaceOfInterest> newPlacesByRoughPlace = newPlaces.ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
 
                 int day = this.Today();
                 this.LoadPlaces(
@@ -161,7 +162,7 @@ public class PlacesOfInterestModSystem : ModSystem
                 _serverNetworkChannel.SendPacket(
                     new SavedPlacesPacket()
                     {
-                        PlacesCount = packet.Places.Count,
+                        PlacesCount = newPlaces.Count,
                     },
                     fromPlayer);
             });
@@ -477,13 +478,15 @@ public class PlacesOfInterestModSystem : ModSystem
         _clientNetworkChannel.SetMessageHandler(
             (LoadedPlacesPacket packet) =>
             {
+                var places = packet.Places ?? [];
+
                 _clientApi.Forms.SetClipboardText(
                     JsonSerializer.Serialize(
-                        packet.Places.Select(x => (SerializablePlaceOfInterest)x)));
+                        places.Select(x => (SerializablePlaceOfInterest)x)));
 
                 _clientApi.TriggerChatMessage(Lang.Get(
                     "places-of-interest-mod:copyInterestingPlacesResult",
-                    packet.Places.Count));
+                    places.Count));
             });
 
         _clientNetworkChannel.SetMessageHandler(
@@ -568,7 +571,16 @@ public class PlacesOfInterestModSystem : ModSystem
                         _ => ExistingPlaceAction.Skip,
                     };
 
-                    List<SerializablePlaceOfInterest> serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText) ?? [];
+
+                    List<SerializablePlaceOfInterest> serializablePlaces = [];
+                    try
+                    {
+                        serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText) ?? [];
+                    }
+                    catch (JsonException) {
+                        return TextCommandResult.Success(
+                            Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultInvalidClipboard"));
+                    }
                     List<PlaceOfInterest> newPlaces = serializablePlaces.Select(x => (PlaceOfInterest)x).ToList();
 
                     _clientNetworkChannel.SendPacket(
