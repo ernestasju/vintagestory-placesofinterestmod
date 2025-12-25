@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ProtoBuf;
 using Vintagestory.API.Client;
@@ -10,6 +11,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods.WorldEdit;
 
 namespace PlacesOfInterestMod;
 
@@ -54,8 +56,30 @@ public class PlacesOfInterestModSystem : ModSystem
                 {
                     RemoveAllPlaces(args.Caller.Player);
 
-                    return TextCommandResult.Success(Lang.Get("places-of-interest-mod:clearedInterestingPlaces"));
+                    return TextCommandResult.Success(
+                        Lang.Get("places-of-interest-mod:clearedInterestingPlaces"));
                 });
+
+        _ = _serverApi.ChatCommands.Create()
+            .WithName("copyInterestingPlaces")
+            .RequiresPlayer()
+            .RequiresPrivilege(Privilege.chat)
+            .WithDescription(Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandDescription"))
+            .HandleWith(
+                TextCommandResult (TextCommandCallingArgs args) =>
+                {
+                    this.LoadPlaces(
+                        args.Caller.Player,
+                        out List<PlaceOfInterest> places);
+
+                    new TextCopy.Clipboard().SetText(
+                        JsonSerializer.Serialize(places.Select(x => (SerializablePlaceOfInterest)x)));
+
+                    return TextCommandResult.Success(
+                        Lang.Get(
+                            "places-of-interest-mod:copyInterestingPlacesResult",
+                            places.Count));
+            });
 
         _ = _serverApi.ChatCommands.Create()
             .WithName("interesting")
@@ -109,12 +133,16 @@ public class PlacesOfInterestModSystem : ModSystem
                     if (placesCloseToPlayer is [])
                     {
                         return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:interestingCommandResult", FormTagsText(includedTags, excludedTags)));
+                            Lang.Get(
+                                "places-of-interest-mod:interestingCommandResult",
+                                FormTagsText(includedTags, excludedTags)));
                     }
                     else
                     {
                         return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:interestingCommandResultUpdated", FormTagsText(includedTags, excludedTags)));
+                            Lang.Get(
+                                "places-of-interest-mod:interestingCommandResultUpdated",
+                                FormTagsText(includedTags, excludedTags)));
                     }
                 });
 
@@ -152,7 +180,9 @@ public class PlacesOfInterestModSystem : ModSystem
                     if (matchingPlaces.Count == 0)
                     {
                         return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:noMatchingPlacesFound", FormTagsText(includedTags, excludedTags)));
+                            Lang.Get(
+                                "places-of-interest-mod:noMatchingPlacesFound",
+                                FormTagsText(includedTags, excludedTags)));
                     }
 
                     FindNearestPlace(
@@ -209,7 +239,9 @@ public class PlacesOfInterestModSystem : ModSystem
                     }
 
                     return TextCommandResult.Success(
-                        Lang.Get("places-of-interest-mod:whatsSoInterestingResult", FormTagsText(uniqueTags, [])));
+                        Lang.Get(
+                            "places-of-interest-mod:whatsSoInterestingResult",
+                            FormTagsText(uniqueTags, [])));
                 });
 
         _serverApi.ChatCommands.Create()
@@ -276,7 +308,10 @@ public class PlacesOfInterestModSystem : ModSystem
                     if (matchingPlaces.Count == 0)
                     {
                         return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:editInterestingPlacesResultNoPlacesFound", searchRadius, FormTagsText(oldIncludedTags, oldExcludedTags)));
+                            Lang.Get(
+                                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
+                                searchRadius,
+                                FormTagsText(oldIncludedTags, oldExcludedTags)));
                     }
 
                     FindPlacesByTags(
@@ -288,7 +323,10 @@ public class PlacesOfInterestModSystem : ModSystem
                     if (placesCloseToPlayer.Count == 0)
                     {
                         return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:editInterestingPlacesResultNoPlacesFound", searchRadius, FormTagsText(oldIncludedTags, oldExcludedTags)));
+                            Lang.Get(
+                                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
+                                searchRadius,
+                                FormTagsText(oldIncludedTags, oldExcludedTags)));
                     }
 
                     this.UpdatePlacesCloseToPlayer(
@@ -303,7 +341,10 @@ public class PlacesOfInterestModSystem : ModSystem
                     SavePlaces(args.Caller.Player, places);
 
                     return TextCommandResult.Success(
-                        Lang.Get("places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces", placesCloseToPlayer.Count, FormTagsText(newIncludedTags, newExcludedTags)));
+                        Lang.Get(
+                            "places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces",
+                            placesCloseToPlayer.Count,
+                            FormTagsText(newIncludedTags, newExcludedTags)));
                 });
 
         // NOTE: Commented for later.

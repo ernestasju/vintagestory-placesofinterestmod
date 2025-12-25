@@ -19,5 +19,7 @@
   "editInterestingPlacesCommandExample2": "/editInterestingPlaces 0 -home base -> -* # remove all bases except the home base",
   "editInterestingPlacesCommandExample3": "/editInterestingPlaces 100 iron -> -iron # remove iron tag from places up to 100 distance away",
   "editInterestingPlacesResultNoPlacesFound": "No matching places found within {0} blocks.",
-  "editInterestingPlacesResultUpdatedPlaces": "Updated {0} places with tags [{1}]."
+  "editInterestingPlacesResultUpdatedPlaces": "Updated {0} places with tags [{1}].",
+  "copyInterestingPlacesCommandDescription": "Copies all recorded places to clipboard.",
+  "copyInterestingPlacesResult": "Copied {0} places to clipboard."
 }
