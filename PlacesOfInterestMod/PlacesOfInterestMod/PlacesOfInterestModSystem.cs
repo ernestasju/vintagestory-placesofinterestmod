@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using ProtoBuf;
 using Vintagestory.API.Client;
@@ -11,7 +12,6 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods.WorldEdit;
 
 namespace PlacesOfInterestMod;
 
@@ -80,6 +80,112 @@ public class PlacesOfInterestModSystem : ModSystem
                             "places-of-interest-mod:copyInterestingPlacesResult",
                             places.Count));
             });
+
+        _ = _serverApi.ChatCommands.Create()
+            .WithName("pasteInterestingPlaces")
+            .RequiresPlayer()
+            .RequiresPrivilege(Privilege.chat)
+            .WithDescription(Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandDescription"))
+            .WithExamples(
+                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample1"),
+                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample2"),
+                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample3"))
+            .WithArgs(
+                _serverApi.ChatCommands.Parsers.OptionalWordRange("existingPlaceAction", "update", "skip", "replace"))
+            .HandleWith(
+                TextCommandResult (TextCommandCallingArgs args) =>
+                {
+                    string? clipboardText = new TextCopy.Clipboard().GetText();
+
+                    if (clipboardText is null)
+                    {
+                        return TextCommandResult.Success(
+                            Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultNoClipboard"));
+                    }
+
+
+                    // NOTE: Arg is guaranteed to exist.
+                    string existingPlaceAction = (string)args[0];
+
+                    const string update = "update";
+                    const string skip = "skip";
+                    const string replace = "replace";
+                    if (!new[] { update, skip, replace }.Contains(existingPlaceAction))
+                    {
+                        existingPlaceAction = skip;
+                    }
+
+                    List<SerializablePlaceOfInterest> serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText) ?? [];
+                    List<PlaceOfInterest> newPlaces = serializablePlaces.Select(x => (PlaceOfInterest)x).ToList();
+                    ILookup<Vec3i, PlaceOfInterest> newPlacesByRoughPlace = newPlaces.ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
+
+                    int day = this.Today();
+                    this.LoadPlaces(
+                        args.Caller.Player,
+                        out List<PlaceOfInterest> places);
+
+                    foreach (IGrouping<Vec3i, PlaceOfInterest> newPlaces2 in newPlacesByRoughPlace)
+                    {
+                        List<Tag> newTags = newPlaces2
+                            .SelectMany(x => x.Tags)
+                            .Where(x => x.EndDay == 0 || x.EndDay >= day)
+                            .DistinctBy(x => x.Name)
+                            .ToList();
+
+                        FindPlacesByRoughPlace(
+                            places,
+                            newPlaces2.Key,
+                            out List<PlaceOfInterest> placesCloseToPlayer);
+
+                        List<Tag> oldTags = placesCloseToPlayer
+                            .SelectMany(x => x.Tags)
+                            .Where(x => x.EndDay == 0 || x.EndDay >= day)
+                            .DistinctBy(x => x.Name)
+                            .ToList();
+
+                        if (oldTags.Count > 0 && existingPlaceAction == skip)
+                        {
+                            continue;
+                        }
+
+                        List<TagGroup> tagGroupsToAdd = newTags
+                            .GroupBy(x => new { x.StartDay, x.EndDay })
+                            .Select(x => new TagGroup()
+                            {
+                                Names = x.Select(x => x.Name).ToArray(),
+                                StartDay = x.Key.StartDay,
+                                EndDay = x.Key.EndDay,
+                            })
+                            .ToList();
+
+                        foreach (TagGroup tagGroup in tagGroupsToAdd)
+                        {
+                            int? startDayOffset = tagGroup.StartDay > day ? tagGroup.StartDay - day : null;
+                            int? endDayOffset = tagGroup.EndDay >= day ? tagGroup.EndDay - day : null;
+                            UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, tagGroup.Names, [], startDayOffset, endDayOffset);
+                        }
+
+                        if (existingPlaceAction == replace)
+                        {
+                            List<string> tagsToRemove = oldTags
+                                .Where(x => !newTags.Any(y => y.Name == x.Name))
+                                .Select(x => x.Name)
+                                .ToList();
+
+                            foreach (string tagToRemove in tagsToRemove)
+                            {
+                                UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, [], [tagToRemove], null, null);
+                            }
+                        }
+                    }
+
+                    SavePlaces(args.Caller.Player, places);
+
+                    return TextCommandResult.Success(
+                        Lang.Get(
+                            "places-of-interest-mod:pasteInterestingPlacesResult",
+                            serializablePlaces.Count));
+                });
 
         _ = _serverApi.ChatCommands.Create()
             .WithName("interesting")
