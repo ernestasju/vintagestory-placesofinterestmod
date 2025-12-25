@@ -21,12 +21,14 @@
   "editInterestingPlacesResultNoPlacesFound": "No matching places found within {0} blocks.",
   "editInterestingPlacesResultUpdatedPlaces": "Updated {0} places with tags [{1}].",
   "copyInterestingPlacesCommandDescription": "Copies all recorded places to clipboard.",
+  "copyInterestingPlacesCommandExample1": ".copyInterestingPlaces # Copy all recorded places to clipboard.",
+  "copyInterestingPlacesCommandExample2": ".copyInterestingPlaces 10000 -secret base # Copy non-secret bases up to 10k distance away.",
   "copyInterestingPlacesResultDownloadInProgress": "Downloading recorded places from server.",
   "copyInterestingPlacesResult": "Copied {0} places to clipboard.",
   "pasteInterestingPlacesCommandDescription": "Pastes all recorded places from clipboard. Does not remove places. Updates activity periods on tags.",
-  "pasteInterestingPlacesCommandExample1": "/pasteInterestingPlaces update # Will keep your tags and will add new tags from clipboard.",
-  "pasteInterestingPlacesCommandExample2": "/pasteInterestingPlaces skip # Will only add new places that you haven't recorded.",
-  "pasteInterestingPlacesCommandExample3": "/pasteInterestingPlaces replace # Will add new places and also replace existing places with tags from clipboard.",
+  "pasteInterestingPlacesCommandExample1": ".pasteInterestingPlaces update # Will keep your tags and will add new tags from clipboard.",
+  "pasteInterestingPlacesCommandExample2": ".pasteInterestingPlaces skip # Will only add new places that you haven't recorded. This is the default.",
+  "pasteInterestingPlacesCommandExample3": ".pasteInterestingPlaces replace # Will add new places and also replace existing places with tags from clipboard.",
   "pasteInterestingPlacesResultUploadInProgress": "Uploading places to server.",
   "pasteInterestingPlacesResult": "Pasted {0} places from clipboard."
 }

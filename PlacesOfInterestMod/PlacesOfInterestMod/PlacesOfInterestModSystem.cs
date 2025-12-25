@@ -66,14 +66,27 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, LoadPlacesPacket packet) =>
             {
+                ParseTags(
+                    packet.TagQueriesText,
+                    out string[] includedTags,
+                    out string[] excludedTags,
+                    out int? _,
+                    out int? _);
+
                 this.LoadPlaces(
                     fromPlayer,
                     out List<PlaceOfInterest> places);
 
+                this.FindPlacesByTags(
+                    places,
+                    includedTags,
+                    excludedTags,
+                    out List<PlaceOfInterest> matchingPlaces);
+
                 _serverNetworkChannel.SendPacket(
                     new LoadedPlacesPacket()
                     {
-                        Places = places,
+                        Places = matchingPlaces,
                     },
                     fromPlayer);
             });
@@ -492,10 +505,30 @@ public class PlacesOfInterestModSystem : ModSystem
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
             .WithDescription(Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandDescription"))
+            .WithExamples(
+                Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandExample1"),
+                Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandExample2"))
+            .WithArgs(
+                _clientApi.ChatCommands.Parsers.OptionalInt("radius", 0),
+                _clientApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    _clientNetworkChannel.SendPacket(new LoadPlacesPacket());
+                    // NOTE: Arg is guaranteed to exist.
+                    int searchRadius = (int)args[0];
+
+                    if (searchRadius < 0)
+                    {
+                        searchRadius = 16;
+                    }
+
+                    string tagQueriesText = args.LastArg?.ToString() ?? "";
+
+                    _clientNetworkChannel.SendPacket(new LoadPlacesPacket()
+                    {
+                        SearchRadius = searchRadius,
+                        TagQueriesText = tagQueriesText,
+                    });
 
                     return TextCommandResult.Success(
                         Lang.Get("places-of-interest-mod:copyInterestingPlacesResultDownloadInProgress"));
@@ -511,7 +544,7 @@ public class PlacesOfInterestModSystem : ModSystem
                 Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample2"),
                 Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample3"))
             .WithArgs(
-                _clientApi.ChatCommands.Parsers.OptionalWordRange("existingPlaceAction", "update", "skip", "replace"))
+                _clientApi.ChatCommands.Parsers.OptionalWordRange("existing place action", "update", "skip", "replace"))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
