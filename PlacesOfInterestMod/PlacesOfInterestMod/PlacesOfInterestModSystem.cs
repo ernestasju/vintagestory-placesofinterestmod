@@ -571,16 +571,19 @@ public class PlacesOfInterestModSystem : ModSystem
                         _ => ExistingPlaceAction.Skip,
                     };
 
-
-                    List<SerializablePlaceOfInterest> serializablePlaces = [];
+                    List<SerializablePlaceOfInterest>? serializablePlaces;
                     try
                     {
-                        serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText) ?? [];
+                        serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText);
                     }
-                    catch (JsonException) {
+                    catch (Exception)
+                    {
                         return TextCommandResult.Success(
                             Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultInvalidClipboard"));
                     }
+
+                    serializablePlaces ??= [];
+
                     List<PlaceOfInterest> newPlaces = serializablePlaces.Select(x => (PlaceOfInterest)x).ToList();
 
                     _clientNetworkChannel.SendPacket(
