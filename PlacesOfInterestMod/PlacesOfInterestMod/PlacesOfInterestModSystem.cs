@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using ProtoBuf;
 using Vintagestory.API.Client;
@@ -21,7 +20,13 @@ public class PlacesOfInterestModSystem : ModSystem
     private const int _roughPlaceResolution = 8;
     private const int _roughPlaceOffset = 4;
 
+    private const string _placeOfInterestNetworkChannelName = "places-of-interest-mod";
+
     private ICoreServerAPI? _serverApi;
+    private ICoreClientAPI? _clientApi;
+
+    private IServerNetworkChannel? _serverNetworkChannel;
+    private IClientNetworkChannel? _clientNetworkChannel;
 
     public override void Start(ICoreAPI api)
     {
@@ -34,15 +39,122 @@ public class PlacesOfInterestModSystem : ModSystem
 
         Mod.Logger.Notification("Hello from Places of Interest server side: " + Lang.Get("places-of-interest-mod:hello"));
 
-        RegisterChatCommands();
+        RegisterServerNetworkChannels();
+        RegisterServerChatCommands();
     }
 
     public override void StartClientSide(ICoreClientAPI api)
     {
+        _clientApi = api;
+
         Mod.Logger.Notification("Hello from Places of Interest client side: " + Lang.Get("places-of-interest-mod:hello"));
+
+        RegisterClientNetworkChannels();
+        RegisterClientChatCommands();
     }
 
-    private void RegisterChatCommands()
+    private void RegisterServerNetworkChannels()
+    {
+        ArgumentNullException.ThrowIfNull(_serverApi);
+
+        _serverNetworkChannel = _serverApi.Network.RegisterChannel(_placeOfInterestNetworkChannelName);
+        _serverNetworkChannel.RegisterMessageType<LoadPlacesPacket>();
+        _serverNetworkChannel.RegisterMessageType<LoadedPlacesPacket>();
+        _serverNetworkChannel.RegisterMessageType<SavePlacesPacket>();
+        _serverNetworkChannel.RegisterMessageType<SavedPlacesPacket>();
+
+        _serverNetworkChannel.SetMessageHandler(
+            (IServerPlayer fromPlayer, LoadPlacesPacket packet) =>
+            {
+                this.LoadPlaces(
+                    fromPlayer,
+                    out List<PlaceOfInterest> places);
+
+                _serverNetworkChannel.SendPacket(
+                    new LoadedPlacesPacket()
+                    {
+                        Places = places,
+                    },
+                    fromPlayer);
+            });
+
+        _serverNetworkChannel.SetMessageHandler(
+            (IServerPlayer fromPlayer, SavePlacesPacket packet) =>
+            {
+                ILookup<Vec3i, PlaceOfInterest> newPlacesByRoughPlace = packet.Places.ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
+
+                int day = this.Today();
+                this.LoadPlaces(
+                    fromPlayer,
+                    out List<PlaceOfInterest> places);
+
+                foreach (IGrouping<Vec3i, PlaceOfInterest> newPlaces2 in newPlacesByRoughPlace)
+                {
+                    List<Tag> newTags = newPlaces2
+                        .SelectMany(x => x.Tags)
+                        .Where(x => x.EndDay == 0 || x.EndDay >= day)
+                        .DistinctBy(x => x.Name)
+                        .ToList();
+
+                    FindPlacesByRoughPlace(
+                        places,
+                        newPlaces2.Key,
+                        out List<PlaceOfInterest> placesCloseToPlayer);
+
+                    List<Tag> oldTags = placesCloseToPlayer
+                        .SelectMany(x => x.Tags)
+                        .Where(x => x.EndDay == 0 || x.EndDay >= day)
+                        .DistinctBy(x => x.Name)
+                        .ToList();
+
+                    if (oldTags.Count > 0 && packet.ExistingPlaceAction == ExistingPlaceAction.Skip)
+                    {
+                        continue;
+                    }
+
+                    List<TagGroup> tagGroupsToAdd = newTags
+                        .GroupBy(x => new { x.StartDay, x.EndDay })
+                        .Select(x => new TagGroup()
+                        {
+                            Names = x.Select(x => x.Name).ToArray(),
+                            StartDay = x.Key.StartDay,
+                            EndDay = x.Key.EndDay,
+                        })
+                        .ToList();
+
+                    foreach (TagGroup tagGroup in tagGroupsToAdd)
+                    {
+                        int? startDayOffset = tagGroup.StartDay > day ? tagGroup.StartDay - day : null;
+                        int? endDayOffset = tagGroup.EndDay >= day ? tagGroup.EndDay - day : null;
+                        UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, tagGroup.Names, [], startDayOffset, endDayOffset);
+                    }
+
+                    if (packet.ExistingPlaceAction == ExistingPlaceAction.Replace)
+                    {
+                        List<string> tagsToRemove = oldTags
+                            .Where(x => !newTags.Any(y => y.Name == x.Name))
+                            .Select(x => x.Name)
+                            .ToList();
+
+                        foreach (string tagToRemove in tagsToRemove)
+                        {
+                            UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, [], [tagToRemove], null, null);
+                        }
+                    }
+                }
+
+                SavePlaces(fromPlayer, places);
+
+                _serverNetworkChannel.SendPacket(
+                    new SavedPlacesPacket()
+                    {
+                        PlacesCount = packet.Places.Count,
+                    },
+                    fromPlayer);
+            });
+    }
+
+    private void RegisterServerChatCommands()
     {
         ArgumentNullException.ThrowIfNull(_serverApi);
 
@@ -58,133 +170,6 @@ public class PlacesOfInterestModSystem : ModSystem
 
                     return TextCommandResult.Success(
                         Lang.Get("places-of-interest-mod:clearedInterestingPlaces"));
-                });
-
-        _ = _serverApi.ChatCommands.Create()
-            .WithName("copyInterestingPlaces")
-            .RequiresPlayer()
-            .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandDescription"))
-            .HandleWith(
-                TextCommandResult (TextCommandCallingArgs args) =>
-                {
-                    this.LoadPlaces(
-                        args.Caller.Player,
-                        out List<PlaceOfInterest> places);
-
-                    new TextCopy.Clipboard().SetText(
-                        JsonSerializer.Serialize(places.Select(x => (SerializablePlaceOfInterest)x)));
-
-                    return TextCommandResult.Success(
-                        Lang.Get(
-                            "places-of-interest-mod:copyInterestingPlacesResult",
-                            places.Count));
-            });
-
-        _ = _serverApi.ChatCommands.Create()
-            .WithName("pasteInterestingPlaces")
-            .RequiresPlayer()
-            .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandDescription"))
-            .WithExamples(
-                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample1"),
-                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample2"),
-                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample3"))
-            .WithArgs(
-                _serverApi.ChatCommands.Parsers.OptionalWordRange("existingPlaceAction", "update", "skip", "replace"))
-            .HandleWith(
-                TextCommandResult (TextCommandCallingArgs args) =>
-                {
-                    string? clipboardText = new TextCopy.Clipboard().GetText();
-
-                    if (clipboardText is null)
-                    {
-                        return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultNoClipboard"));
-                    }
-
-
-                    // NOTE: Arg is guaranteed to exist.
-                    string existingPlaceAction = (string)args[0];
-
-                    const string update = "update";
-                    const string skip = "skip";
-                    const string replace = "replace";
-                    if (!new[] { update, skip, replace }.Contains(existingPlaceAction))
-                    {
-                        existingPlaceAction = skip;
-                    }
-
-                    List<SerializablePlaceOfInterest> serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText) ?? [];
-                    List<PlaceOfInterest> newPlaces = serializablePlaces.Select(x => (PlaceOfInterest)x).ToList();
-                    ILookup<Vec3i, PlaceOfInterest> newPlacesByRoughPlace = newPlaces.ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
-
-                    int day = this.Today();
-                    this.LoadPlaces(
-                        args.Caller.Player,
-                        out List<PlaceOfInterest> places);
-
-                    foreach (IGrouping<Vec3i, PlaceOfInterest> newPlaces2 in newPlacesByRoughPlace)
-                    {
-                        List<Tag> newTags = newPlaces2
-                            .SelectMany(x => x.Tags)
-                            .Where(x => x.EndDay == 0 || x.EndDay >= day)
-                            .DistinctBy(x => x.Name)
-                            .ToList();
-
-                        FindPlacesByRoughPlace(
-                            places,
-                            newPlaces2.Key,
-                            out List<PlaceOfInterest> placesCloseToPlayer);
-
-                        List<Tag> oldTags = placesCloseToPlayer
-                            .SelectMany(x => x.Tags)
-                            .Where(x => x.EndDay == 0 || x.EndDay >= day)
-                            .DistinctBy(x => x.Name)
-                            .ToList();
-
-                        if (oldTags.Count > 0 && existingPlaceAction == skip)
-                        {
-                            continue;
-                        }
-
-                        List<TagGroup> tagGroupsToAdd = newTags
-                            .GroupBy(x => new { x.StartDay, x.EndDay })
-                            .Select(x => new TagGroup()
-                            {
-                                Names = x.Select(x => x.Name).ToArray(),
-                                StartDay = x.Key.StartDay,
-                                EndDay = x.Key.EndDay,
-                            })
-                            .ToList();
-
-                        foreach (TagGroup tagGroup in tagGroupsToAdd)
-                        {
-                            int? startDayOffset = tagGroup.StartDay > day ? tagGroup.StartDay - day : null;
-                            int? endDayOffset = tagGroup.EndDay >= day ? tagGroup.EndDay - day : null;
-                            UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, tagGroup.Names, [], startDayOffset, endDayOffset);
-                        }
-
-                        if (existingPlaceAction == replace)
-                        {
-                            List<string> tagsToRemove = oldTags
-                                .Where(x => !newTags.Any(y => y.Name == x.Name))
-                                .Select(x => x.Name)
-                                .ToList();
-
-                            foreach (string tagToRemove in tagsToRemove)
-                            {
-                                UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, [], [tagToRemove], null, null);
-                            }
-                        }
-                    }
-
-                    SavePlaces(args.Caller.Player, places);
-
-                    return TextCommandResult.Success(
-                        Lang.Get(
-                            "places-of-interest-mod:pasteInterestingPlacesResult",
-                            serializablePlaces.Count));
                 });
 
         _ = _serverApi.ChatCommands.Create()
@@ -464,6 +449,105 @@ public class PlacesOfInterestModSystem : ModSystem
         //         {
         //             return TextCommandResult.Success(Today().ToString());
         //         });
+    }
+
+    private void RegisterClientNetworkChannels()
+    {
+        ArgumentNullException.ThrowIfNull(_clientApi);
+
+        _clientNetworkChannel = _clientApi.Network.RegisterChannel(_placeOfInterestNetworkChannelName);
+        _clientNetworkChannel.RegisterMessageType<LoadPlacesPacket>();
+        _clientNetworkChannel.RegisterMessageType<LoadedPlacesPacket>();
+        _clientNetworkChannel.RegisterMessageType<SavePlacesPacket>();
+        _clientNetworkChannel.RegisterMessageType<SavedPlacesPacket>();
+
+        _clientNetworkChannel.SetMessageHandler(
+            (LoadedPlacesPacket packet) =>
+            {
+                _clientApi.Forms.SetClipboardText(
+                    JsonSerializer.Serialize(
+                        packet.Places.Select(x => (SerializablePlaceOfInterest)x)));
+
+                _clientApi.TriggerChatMessage(Lang.Get(
+                    "places-of-interest-mod:copyInterestingPlacesResult",
+                    packet.Places.Count));
+            });
+
+        _clientNetworkChannel.SetMessageHandler(
+            (SavedPlacesPacket packet) =>
+            {
+                _clientApi.TriggerChatMessage(Lang.Get(
+                    "places-of-interest-mod:pasteInterestingPlacesResult",
+                    packet.PlacesCount));
+            });
+    }
+
+    private void RegisterClientChatCommands()
+    {
+        ArgumentNullException.ThrowIfNull(_clientApi);
+        ArgumentNullException.ThrowIfNull(_clientNetworkChannel);
+
+        _ = _clientApi.ChatCommands.Create()
+            .WithName("copyInterestingPlaces")
+            .RequiresPlayer()
+            .RequiresPrivilege(Privilege.chat)
+            .WithDescription(Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandDescription"))
+            .HandleWith(
+                TextCommandResult (TextCommandCallingArgs args) =>
+                {
+                    _clientNetworkChannel.SendPacket(new LoadPlacesPacket());
+
+                    return TextCommandResult.Success(
+                        Lang.Get("places-of-interest-mod:copyInterestingPlacesResultDownloadInProgress"));
+                });
+
+        _ = _clientApi.ChatCommands.Create()
+            .WithName("pasteInterestingPlaces")
+            .RequiresPlayer()
+            .RequiresPrivilege(Privilege.chat)
+            .WithDescription(Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandDescription"))
+            .WithExamples(
+                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample1"),
+                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample2"),
+                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample3"))
+            .WithArgs(
+                _clientApi.ChatCommands.Parsers.OptionalWordRange("existingPlaceAction", "update", "skip", "replace"))
+            .HandleWith(
+                TextCommandResult (TextCommandCallingArgs args) =>
+                {
+                    ArgumentNullException.ThrowIfNull(_clientApi);
+                    string? clipboardText = _clientApi.Forms.GetClipboardText() is string value && !string.IsNullOrWhiteSpace(value) ? value : null;
+
+                    if (clipboardText is null)
+                    {
+                        return TextCommandResult.Success(
+                            Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultNoClipboard"));
+                    }
+
+                    // NOTE: Arg is guaranteed to exist.
+                    string? existingPlaceActionText = args[0] as string;
+
+                    ExistingPlaceAction existingPlaceAction = existingPlaceActionText?.ToLower() switch
+                    {
+                        "skip" => ExistingPlaceAction.Skip,
+                        "update" => ExistingPlaceAction.Update,
+                        "replace" => ExistingPlaceAction.Replace,
+                        _ => ExistingPlaceAction.Skip,
+                    };
+
+                    List<SerializablePlaceOfInterest> serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText) ?? [];
+                    List<PlaceOfInterest> newPlaces = serializablePlaces.Select(x => (PlaceOfInterest)x).ToList();
+
+                    _clientNetworkChannel.SendPacket(
+                        new SavePlacesPacket()
+                        {
+                            ExistingPlaceAction = existingPlaceAction,
+                            Places = newPlaces,
+                        });
+
+                    return TextCommandResult.Success(
+                        Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultUploadInProgress"));
+                });
     }
 
     private int Today()
