@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -66,27 +65,18 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, LoadPlacesPacket packet) =>
             {
-                ParseTags(
-                    packet.TagQueriesText,
-                    out string[] includedTags,
-                    out string[] excludedTags,
-                    out int? _,
-                    out int? _);
+                SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(packet.TagQueriesText, this.Today());
 
-                this.LoadPlaces(
-                    fromPlayer,
-                    out List<PlaceOfInterest> places);
+                LoadPlaces(fromPlayer, out List<Place> places);
 
-                this.FindPlacesByTags(
-                    places,
-                    includedTags,
-                    excludedTags,
-                    out List<PlaceOfInterest> matchingPlaces);
+                searchPlacesQuery.SearchPlaces(places, out List<Place> matchingPlaces);
 
                 _serverNetworkChannel.SendPacket(
                     new LoadedPlacesPacket()
                     {
-                        Places = matchingPlaces,
+                        Places = matchingPlaces
+                            .Select(x => (ProtoPlace)x)
+                            .ToList(),
                     },
                     fromPlayer);
             });
@@ -94,15 +84,16 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, SavePlacesPacket packet) =>
             {
-                List<PlaceOfInterest> newPlaces = packet.Places ?? [];
-                ILookup<Vec3i, PlaceOfInterest> newPlacesByRoughPlace = newPlaces.ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
+                List<Place> newPlaces = (packet.Places ?? [])
+                    .SelectNonNulls(x => (Place?)x)
+                    .ToList();
+                ILookup<Vec3i, Place> newPlacesByRoughPlace = newPlaces
+                    .ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
 
                 int day = this.Today();
-                this.LoadPlaces(
-                    fromPlayer,
-                    out List<PlaceOfInterest> places);
+                LoadPlaces(fromPlayer, out List<Place> places);
 
-                foreach (IGrouping<Vec3i, PlaceOfInterest> newPlaces2 in newPlacesByRoughPlace)
+                foreach (IGrouping<Vec3i, Place> newPlaces2 in newPlacesByRoughPlace)
                 {
                     List<Tag> newTags = newPlaces2
                         .SelectMany(x => x.Tags)
@@ -113,7 +104,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     FindPlacesByRoughPlace(
                         places,
                         newPlaces2.Key,
-                        out List<PlaceOfInterest> placesCloseToPlayer);
+                        out List<Place> placesCloseToPlayer);
 
                     List<Tag> oldTags = placesCloseToPlayer
                         .SelectMany(x => x.Tags)
@@ -138,22 +129,45 @@ public class PlacesOfInterestModSystem : ModSystem
 
                     foreach (TagGroup tagGroup in tagGroupsToAdd)
                     {
-                        int? startDayOffset = tagGroup.StartDay > day ? tagGroup.StartDay - day : null;
-                        int? endDayOffset = tagGroup.EndDay >= day ? tagGroup.EndDay - day : null;
-                        UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, tagGroup.Names, [], startDayOffset, endDayOffset);
+                        AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.CreateForUpdate(
+                            tagGroup.Names,
+                            [],
+                            packet.ExistingPlaceAction,
+                            day,
+                            tagGroup.StartDay,
+                            tagGroup.EndDay);
+
+                        addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
+                            places,
+                            placesCloseToPlayer,
+                            newPlaces2.First().XYZ,
+                            out int _,
+                            out int _,
+                            out int _);
                     }
 
                     if (packet.ExistingPlaceAction == ExistingPlaceAction.Replace)
                     {
-                        List<string> tagsToRemove = oldTags
+                        List<TagName> tagNamesToRemove = oldTags
                             .Where(x => !newTags.Any(y => y.Name == x.Name))
                             .Select(x => x.Name)
                             .ToList();
 
-                        foreach (string tagToRemove in tagsToRemove)
-                        {
-                            UpdatePlacesCloseToPlayer(placesCloseToPlayer, places, newPlaces2.First().XYZ, [], [tagToRemove], null, null);
-                        }
+                        AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.CreateForUpdate(
+                            [],
+                            tagNamesToRemove,
+                            ExistingPlaceAction.Update,
+                            day,
+                            0,
+                            0);
+
+                        addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
+                            places,
+                            placesCloseToPlayer,
+                            newPlaces2.First().XYZ,
+                            out int _,
+                            out int _,
+                            out int _);
                     }
                 }
 
@@ -202,36 +216,30 @@ public class PlacesOfInterestModSystem : ModSystem
                 {
                     Vec3d playerPosition = args.Caller.Pos;
 
-                    ParseTags(
+                    AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.Parse(
                         args.LastArg?.ToString() ?? "",
-                        out string[] includedTags,
-                        out string[] excludedTags,
-                        out int? startDayOffset,
-                        out int? endDayOffset);
+                        this.Today());
 
-                    this.LoadPlaces(
-                        args.Caller.Player,
-                        out List<PlaceOfInterest> places);
+                    LoadPlaces(args.Caller.Player, out List<Place> places);
 
                     FindPlacesByRoughPlace(
                         places,
                         playerPosition.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset),
-                        out List<PlaceOfInterest> placesCloseToPlayer);
+                        out List<Place> placesCloseToPlayer);
 
-                    if (placesCloseToPlayer is [] && includedTags is [])
+                    if (placesCloseToPlayer is [] && !addOrUpdateOrRemovePlacesQuery.HasTagNamesToInclude())
                     {
                         return TextCommandResult.Success(
                             Lang.Get("places-of-interest-mod:interestingCommandResultNothingToAdd"));
                     }
 
-                    this.UpdatePlacesCloseToPlayer(
-                        placesCloseToPlayer,
+                    addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
                         places,
+                        placesCloseToPlayer,
                         playerPosition,
-                        includedTags,
-                        excludedTags,
-                        startDayOffset,
-                        endDayOffset);
+                        out int _,
+                        out int _,
+                        out int _);
 
                     SavePlaces(args.Caller.Player, places);
 
@@ -240,14 +248,18 @@ public class PlacesOfInterestModSystem : ModSystem
                         return TextCommandResult.Success(
                             Lang.Get(
                                 "places-of-interest-mod:interestingCommandResult",
-                                FormTagsText(includedTags, excludedTags)));
+                                FormTagsText(addOrUpdateOrRemovePlacesQuery.TagNamesToInclude, [], [], [])));
                     }
                     else
                     {
                         return TextCommandResult.Success(
                             Lang.Get(
                                 "places-of-interest-mod:interestingCommandResultUpdated",
-                                FormTagsText(includedTags, excludedTags)));
+                                FormTagsText(
+                                    addOrUpdateOrRemovePlacesQuery.TagNamesToInclude,
+                                    [],
+                                    addOrUpdateOrRemovePlacesQuery.TagNamesToExclude,
+                                    addOrUpdateOrRemovePlacesQuery.TagPatternsToExclude)));
                     }
                 });
 
@@ -265,40 +277,33 @@ public class PlacesOfInterestModSystem : ModSystem
                     Vec3d playerPosition = args.Caller.Pos;
                     int day = this.Today();
 
-                    ParseTags(
-                        args.LastArg?.ToString() ?? "",
-                        out string[] includedTags,
-                        out string[] excludedTags,
-                        out int? _,
-                        out int? _);
+                    SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(args.LastArg?.ToString() ?? "", this.Today());
 
-                    this.LoadPlaces(
-                        args.Caller.Player,
-                        out List<PlaceOfInterest> places);
+                    LoadPlaces(args.Caller.Player, out List<Place> places);
 
-                    this.FindPlacesByTags(
-                        places,
-                        includedTags,
-                        excludedTags,
-                        out List<PlaceOfInterest> matchingPlaces);
+                    searchPlacesQuery.SearchPlaces(places, out List<Place> matchingPlaces);
 
                     if (matchingPlaces.Count == 0)
                     {
                         return TextCommandResult.Success(
                             Lang.Get(
                                 "places-of-interest-mod:noMatchingPlacesFound",
-                                FormTagsText(includedTags, excludedTags)));
+                                FormTagsText(
+                                    searchPlacesQuery.TagNamesToInclude,
+                                    searchPlacesQuery.TagPatternsToInclude,
+                                    searchPlacesQuery.TagNamesToExclude,
+                                    searchPlacesQuery.TagPatternsToExclude)));
                     }
 
                     FindNearestPlace(
                         matchingPlaces,
                         playerPosition,
-                        out PlaceOfInterest nearestPlace);
+                        out Place nearestPlace);
 
                     return TextCommandResult.Success(
                         Lang.Get(
                             "places-of-interest-mod:foundNearestPlace",
-                            FormTagsText(nearestPlace.CalculateActiveTagNames(day), []),
+                            FormTagsText(nearestPlace.CalculateActiveTagNames(day), [], [], []),
                             (int)Math.Round(playerPosition.ToXZ().DistanceTo(nearestPlace.XYZ.ToXZ())),
                             (int)Math.Round(nearestPlace.XYZ.Y - playerPosition.Y)));
                 });
@@ -325,17 +330,17 @@ public class PlacesOfInterestModSystem : ModSystem
                     Vec3d playerPosition = args.Caller.Pos;
                     int day = this.Today();
 
-                    this.LoadPlaces(
-                        args.Caller.Player,
-                        out List<PlaceOfInterest> places);
+                    LoadPlaces(args.Caller.Player, out List<Place> places);
 
                     FindPlacesInRadius(
                         places,
                         playerPosition,
                         searchRadius,
-                        out List<PlaceOfInterest> placesInRadius);
+                        out List<Place> placesInRadius);
 
-                    HashSet<string> uniqueTags = placesInRadius.SelectMany(x => x.CalculateActiveTagNames(day)).ToHashSet();
+                    HashSet<TagName> uniqueTags = placesInRadius
+                        .SelectMany(x => x.CalculateActiveTagNames(day))
+                        .ToHashSet();
 
                     if (uniqueTags.Count == 0)
                     {
@@ -346,7 +351,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     return TextCommandResult.Success(
                         Lang.Get(
                             "places-of-interest-mod:whatsSoInterestingResult",
-                            FormTagsText(uniqueTags, [])));
+                            FormTagsText(uniqueTags, [], [], [])));
                 });
 
         _serverApi.ChatCommands.Create()
@@ -375,55 +380,17 @@ public class PlacesOfInterestModSystem : ModSystem
 
                     Vec3d playerPosition = args.Caller.Pos;
 
-                    string tagQueriesText = $" {args.LastArg?.ToString() ?? ""} ";
-                    if (!tagQueriesText.Contains(" -> "))
-                    {
-                        tagQueriesText = " -> " + tagQueriesText.TrimStart();
-                    }
+                    SearchAndUpdateOrRemovePlacesQuery searchAndUpdateOrRemovePlacesQuery = SearchAndUpdateOrRemovePlacesQuery.Parse(
+                        args.LastArg?.ToString() ?? "",
+                        this.Today());
 
-                    if (tagQueriesText.Split(" -> ", 2) is not [string oldTags, string newTags])
-                    {
-                        throw new UnreachableException();
-                    }
-
-                    ParseTags(
-                        oldTags,
-                        out string[] oldIncludedTags,
-                        out string[] oldExcludedTags,
-                        out int? _,
-                        out int? _);
-
-                    ParseTags(
-                        newTags,
-                        out string[] newIncludedTags,
-                        out string[] newExcludedTags,
-                        out int? newStartDayOffset,
-                        out int? newEndDayOffset);
-
-                    this.LoadPlaces(
-                        args.Caller.Player,
-                        out List<PlaceOfInterest> places);
+                    LoadPlaces(args.Caller.Player, out List<Place> places);
 
                     FindPlacesInRadius(
                         places,
                         playerPosition,
                         searchRadius,
-                        out List<PlaceOfInterest> matchingPlaces);
-
-                    if (matchingPlaces.Count == 0)
-                    {
-                        return TextCommandResult.Success(
-                            Lang.Get(
-                                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
-                                searchRadius,
-                                FormTagsText(oldIncludedTags, oldExcludedTags)));
-                    }
-
-                    FindPlacesByTags(
-                        matchingPlaces,
-                        oldIncludedTags,
-                        oldExcludedTags,
-                        out List<PlaceOfInterest> placesCloseToPlayer);
+                        out List<Place> placesCloseToPlayer);
 
                     if (placesCloseToPlayer.Count == 0)
                     {
@@ -431,25 +398,44 @@ public class PlacesOfInterestModSystem : ModSystem
                             Lang.Get(
                                 "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
                                 searchRadius,
-                                FormTagsText(oldIncludedTags, oldExcludedTags)));
+                                FormTagsText(
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToInclude,
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToInclude,
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToExclude,
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToExclude)));
                     }
 
-                    this.UpdatePlacesCloseToPlayer(
-                        placesCloseToPlayer,
+                    searchAndUpdateOrRemovePlacesQuery.SearchAndUpdatePlaces(
                         places,
-                        playerPosition,
-                        newIncludedTags,
-                        newExcludedTags,
-                        newStartDayOffset,
-                        newEndDayOffset);
+                        placesCloseToPlayer,
+                        out int numberOfFoundPlaces,
+                        out int _,
+                        out int _);
+
+                    if (numberOfFoundPlaces == 0)
+                    {
+                        return TextCommandResult.Success(
+                            Lang.Get(
+                                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
+                                searchRadius,
+                                FormTagsText(
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToInclude,
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToInclude,
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToExclude,
+                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToExclude)));
+                    }
 
                     SavePlaces(args.Caller.Player, places);
 
                     return TextCommandResult.Success(
                         Lang.Get(
                             "places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces",
-                            placesCloseToPlayer.Count,
-                            FormTagsText(newIncludedTags, newExcludedTags)));
+                            numberOfFoundPlaces,
+                            FormTagsText(
+                                searchAndUpdateOrRemovePlacesQuery.UpdateTagNamesToInclude,
+                                searchAndUpdateOrRemovePlacesQuery.UpdateTagPatternsToInclude,
+                                searchAndUpdateOrRemovePlacesQuery.UpdateTagNamesToExclude,
+                                searchAndUpdateOrRemovePlacesQuery.UpdateTagPatternsToExclude)));
                 });
 
         // NOTE: Commented for later.
@@ -478,11 +464,13 @@ public class PlacesOfInterestModSystem : ModSystem
         _clientNetworkChannel.SetMessageHandler(
             (LoadedPlacesPacket packet) =>
             {
-                var places = packet.Places ?? [];
+                List<SerializablePlace> places = (packet.Places ?? [])
+                    .SelectNonNulls(x => (Place?)x)
+                    .Select(x => (SerializablePlace)x)
+                    .ToList();
 
                 _clientApi.Forms.SetClipboardText(
-                    JsonSerializer.Serialize(
-                        places.Select(x => (SerializablePlaceOfInterest)x)));
+                    JsonSerializer.Serialize(places));
 
                 _clientApi.TriggerChatMessage(Lang.Get(
                     "places-of-interest-mod:copyInterestingPlacesResult",
@@ -571,10 +559,10 @@ public class PlacesOfInterestModSystem : ModSystem
                         _ => ExistingPlaceAction.Skip,
                     };
 
-                    List<SerializablePlaceOfInterest>? serializablePlaces;
+                    List<SerializablePlace>? serializablePlaces;
                     try
                     {
-                        serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlaceOfInterest>>(clipboardText);
+                        serializablePlaces = JsonSerializer.Deserialize<List<SerializablePlace>>(clipboardText);
                     }
                     catch (Exception)
                     {
@@ -584,7 +572,10 @@ public class PlacesOfInterestModSystem : ModSystem
 
                     serializablePlaces ??= [];
 
-                    List<PlaceOfInterest> newPlaces = serializablePlaces.Select(x => (PlaceOfInterest)x).ToList();
+                    List<ProtoPlace> newPlaces = serializablePlaces
+                        .SelectNonNulls(x => (Place?)x)
+                        .Select(x => (ProtoPlace)x)
+                        .ToList();
 
                     _clientNetworkChannel.SendPacket(
                         new SavePlacesPacket()
@@ -606,9 +597,9 @@ public class PlacesOfInterestModSystem : ModSystem
     }
 
     private static void FindNearestPlace(
-        List<PlaceOfInterest> places,
+        List<Place> places,
         Vec3d position,
-        out PlaceOfInterest nearestPlace)
+        out Place nearestPlace)
     {
         if (places.Count == 0)
         {
@@ -619,98 +610,53 @@ public class PlacesOfInterestModSystem : ModSystem
     }
 
     private static string FormTagsText(
-        IEnumerable<string> includedTags,
-        IEnumerable<string> excludedTags)
+        IEnumerable<TagName> includedTagNames,
+        IEnumerable<TagPattern> includedTagPatterns,
+        IEnumerable<TagName> excludedTagNames,
+        IEnumerable<TagPattern> excludedTagPatterns)
     {
 #pragma warning disable S3220 // Method calls should not resolve ambiguously to overloads with "params"
-        return string.Join(" ", [.. includedTags.Order(), .. excludedTags.Select(x => "-" + x).Order()]);
+        return string.Join(
+            " ",
+            [
+                .. includedTagNames.OrderBy(x => x.Value.ToLowerInvariant()),
+                .. includedTagPatterns.OrderBy(x => x.ToString().ToLowerInvariant()),
+                .. excludedTagNames.OrderBy(x => x.Value.ToLowerInvariant()).Select(x => "-" + x),
+                .. excludedTagPatterns.OrderBy(x => x.ToString().ToLowerInvariant()).Select(x => "-" + x),
+            ]);
 #pragma warning restore S3220 // Method calls should not resolve ambiguously to overloads with "params"
     }
 
-    private void FindPlacesByTags(
-        List<PlaceOfInterest> places,
-        string[] includedTags,
-        string[] excludedTags,
-        out List<PlaceOfInterest> placesByTags)
+    private static void FindPlacesByRoughPlace(
+        List<Place> places,
+        Vec3i roughPlayerPlacePosition,
+        out List<Place> matchingPlaces)
     {
-        placesByTags = places
-            .Where(x =>
-                x.MatchesTags(
-                    this.Today(),
-                    includedTags,
-                    excludedTags,
-                    wildcardsInIncludedTags: true,
-                    wildcardInExcludedTags: true))
+        matchingPlaces = places
+            .Where(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset) == roughPlayerPlacePosition)
             .ToList();
     }
 
-    private void UpdatePlacesCloseToPlayer(
-        List<PlaceOfInterest> placesCloseToPlayer,
-        List<PlaceOfInterest> allPlaces,
-        Vec3d playerPosition,
-        string[] tagsToAdd,
-        string[] tagsToRemove,
-        int? startDayOffset,
-        int? endDayOffset)
+    private static void FindPlacesInRadius(
+        List<Place> places,
+        Vec3d finePlayerPlacePosition,
+        double searchRadius,
+        out List<Place> matchingPlaces)
     {
-        int day = this.Today();
-
-        int startDay = 0;
-        int endDay = 0;
-        if (startDayOffset is int nonNullStartDayOffset && nonNullStartDayOffset > 0)
-        {
-            startDay = day + nonNullStartDayOffset;
-        }
-
-        if (endDayOffset is int nonNullEndDayOffset && nonNullEndDayOffset > 0)
-        {
-            endDay = day + nonNullEndDayOffset;
-        }
-
-        if (placesCloseToPlayer.Count == 0)
-        {
-            PlaceOfInterest place = new()
-            {
-                XYZ = playerPosition,
-                Tags = tagsToAdd
-                    .Select(x => new Tag()
-                    {
-                        Name = x,
-                        StartDay = startDay,
-                        EndDay = endDay,
-                    })
-                    .ToList(),
-            };
-
-            allPlaces.Add(place);
-        }
-        else
-        {
-            List<PlaceOfInterest> placesToRemove = [];
-
-            foreach (PlaceOfInterest place in placesCloseToPlayer)
-            {
-                place.UpdateTags(tagsToRemove, tagsToAdd, startDay, endDay);
-
-                if (place.Tags.Count == 0)
-                {
-                    placesToRemove.Add(place);
-                    continue;
-                }
-            }
-
-            foreach (PlaceOfInterest place in placesToRemove)
-            {
-                allPlaces.Remove(place);
-            }
-        }
+        matchingPlaces = places
+            .Where(x => x.XYZ.ToXZ().DistanceTo(finePlayerPlacePosition.ToXZ()) <= searchRadius)
+            .ToList();
     }
 
     private static void SavePlaces(
-        IPlayer player,
-        List<PlaceOfInterest> places)
+    IPlayer player,
+    List<Place> places)
     {
-        player.WorldData.SetModdata(_placesOfInterestModDataKey, SerializerUtil.Serialize(places));
+        List<ProtoPlace> protoPlaces = places
+            .Select(x => (ProtoPlace)x)
+            .ToList();
+
+        player.WorldData.SetModdata(_placesOfInterestModDataKey, SerializerUtil.Serialize(protoPlaces));
     }
 
     private static void RemoveAllPlaces(IPlayer player)
@@ -718,162 +664,27 @@ public class PlacesOfInterestModSystem : ModSystem
         player.WorldData.RemoveModdata(_placesOfInterestModDataKey);
     }
 
-    private static void FindPlacesByRoughPlace(
-        List<PlaceOfInterest> places,
-        Vec3i roughPlayerPlacePosition,
-        out List<PlaceOfInterest> matchingPlaces)
-    {
-        matchingPlaces = places.Where(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset) == roughPlayerPlacePosition).ToList();
-    }
-
-    private static void FindPlacesInRadius(
-        List<PlaceOfInterest> places,
-        Vec3d finePlayerPlacePosition,
-        double searchRadius,
-        out List<PlaceOfInterest> matchingPlaces)
-    {
-        matchingPlaces = places.Where(x => x.XYZ.ToXZ().DistanceTo(finePlayerPlacePosition.ToXZ()) <= searchRadius).ToList();
-    }
-
-    private void LoadPlaces(
+    private static void LoadPlaces(
         IPlayer player,
-        out List<PlaceOfInterest> places)
+        out List<Place> places)
     {
         try
         {
             places = SerializerUtil
-                .Deserialize<List<PlaceOfInterest>>(
+                .Deserialize<List<ProtoPlace>>(
                     player.WorldData.GetModdata(_placesOfInterestModDataKey),
                     [])
-                .Where(
-                    x =>
-                    {
-                        if (x.Tags is null)
-                        {
-                            return false;
-                        }
-
-                        x.Tags.RemoveAll(x => string.IsNullOrEmpty(x.Name));
-
-                        return x.Tags.Count > 0;
-                    })
+                .SelectNonNulls(x => (Place?)x)
                 .ToList();
         }
         catch (ProtoException)
         {
-            List<OldPlaceOfInterest> oldPlaceOfInterests = SerializerUtil
-                .Deserialize<List<OldPlaceOfInterest>>(
+            places = SerializerUtil
+                .Deserialize<List<OldProtoPlace>>(
                     player.WorldData.GetModdata(_placesOfInterestModDataKey),
                     [])
-                .Where(
-                    x =>
-                    {
-                        if (x.Tags is null)
-                        {
-                            return false;
-                        }
-
-                        x.Tags.RemoveWhere(x => string.IsNullOrEmpty(x));
-
-                        return x.Tags.Count > 0;
-                    })
+                .SelectNonNulls(x => (Place?)x)
                 .ToList();
-
-#pragma warning disable T0010 // Internal Styling Rule T0010
-            places = oldPlaceOfInterests
-                .Select(
-                    oldPlace => new PlaceOfInterest()
-                    {
-                        XYZ = oldPlace.XYZ,
-                        Tags = oldPlace.Tags
-                            .Where(x => !string.IsNullOrEmpty(x))
-                            .Select(tagName => new Tag()
-                            {
-                                Name = tagName,
-                                StartDay = 0,
-                                EndDay = 0,
-                            })
-                            .ToList(),
-                    })
-                .ToList();
-#pragma warning restore T0010 // Internal Styling Rule T0010
         }
-
-        foreach (PlaceOfInterest place in places)
-        {
-            place.Validate();
-        }
-    }
-
-    private static void ParseTags(
-        string tagQueriesText,
-        out string[] includedTags,
-        out string[] excludedTags,
-        out int? startDayOffset,
-        out int? endDayOffset)
-    {
-        startDayOffset = null;
-        endDayOffset = null;
-
-        List<string> includedTags2 = [];
-        List<string> excludedTags2 = [];
-        foreach (string tagQueryText in tagQueriesText.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            Match match = Regex.Match(tagQueryText.ToLower(), @"^(?<Sign>[\+\-])?(?:(?<Number>[1-9]\d*)(?<Unit>[yqmwd])|(?<Tag>.*))$");
-            if (!match.Success)
-            {
-                continue;
-            }
-
-            string sign = match.Groups["Sign"].Value;
-            ArgumentNullException.ThrowIfNull(sign);
-
-            if (match.Groups["Number"].Success && match.Groups["Unit"].Success)
-            {
-                if (!int.TryParse(match.Groups["Number"].Value, out int number))
-                {
-                    continue;
-                }
-
-                number *= match.Groups["Unit"].Value switch
-                {
-                    "y" => 365,
-                    "q" => 91,
-                    "m" => 30,
-                    "w" => 7,
-                    "d" => 1,
-
-                    // NOTE: Unreachable due to regex.
-                    _ => 0,
-                };
-
-                if (sign is "+" or "-")
-                {
-                    // NOTE: Saying I don't way to see this place for 7 days is equivalent to saying I want to see it in 7 days.
-                    startDayOffset = number;
-                    continue;
-                }
-
-                if (sign == "")
-                {
-                    endDayOffset = number;
-                    continue;
-                }
-            }
-
-            string tag = match.Groups["Tag"].Value;
-
-            if (sign == "-")
-            {
-                excludedTags2.Add(tag);
-            }
-            else
-            {
-                includedTags2.Add(tag);
-            }
-        }
-
-        includedTags = includedTags2.ToArray();
-        excludedTags = excludedTags2.ToArray();
     }
 }

@@ -1,18 +1,12 @@
-﻿using ProtoBuf;
+﻿namespace PlacesOfInterestMod;
 
-namespace PlacesOfInterestMod;
-
-[ProtoContract]
-public class Tag
+public sealed class Tag
 {
-    [ProtoMember(1)]
-    public required string Name { get; init; }
+    public required TagName Name { get; init; }
 
-    [ProtoMember(2)]
-    public int StartDay { get; set; }
+    public required int StartDay { get; init; }
 
-    [ProtoMember(3)]
-    public int EndDay { get; set; }
+    public required int EndDay { get; init; }
 
     public bool IsActive(int day)
     {

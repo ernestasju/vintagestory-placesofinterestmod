@@ -10,5 +10,5 @@ public class SavePlacesPacket
     public required ExistingPlaceAction ExistingPlaceAction { get; init; }
 
     [ProtoMember(2)]
-    public required List<PlaceOfInterest> Places { get; init; }
+    public required List<ProtoPlace> Places { get; init; }
 }

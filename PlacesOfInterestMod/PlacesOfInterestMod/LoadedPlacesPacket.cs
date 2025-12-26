@@ -7,5 +7,5 @@ namespace PlacesOfInterestMod;
 public class LoadedPlacesPacket
 {
     [ProtoMember(1)]
-    public required List<PlaceOfInterest> Places { get; init; }
+    public required List<ProtoPlace> Places { get; init; }
 }

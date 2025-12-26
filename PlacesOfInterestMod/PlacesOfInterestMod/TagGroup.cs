@@ -2,7 +2,7 @@
 
 public sealed class TagGroup
 {
-    public required string[] Names { get; init; }
+    public required TagName[] Names { get; init; }
 
     public required int StartDay { get; init; }
 

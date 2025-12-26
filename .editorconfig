@@ -97,6 +97,13 @@ dotnet_style_null_propagation = true:suggestion
 dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
 dotnet_style_prefer_auto_properties = true:silent
 dotnet_style_namespace_match_folder = true:suggestion
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:silent
+dotnet_style_prefer_conditional_expression_over_return = true:silent
+dotnet_style_explicit_tuple_names = true:suggestion
+dotnet_style_prefer_inferred_tuple_names = true:suggestion
 
 # Custom rules for this project
 
@@ -722,3 +729,11 @@ dotnet_diagnostic.T0018.severity = silent
 ### or replace with a brief explainatory TODO comment. Small, contextual comments that explain
 ### implementation decisions are allowed; entire commented implementations should be cleaned up.
 dotnet_diagnostic.S125.severity = silent
+
+### T0008: Internal Styling Rule T0008
+### T0008 requires properties to precede the constructors.
+dotnet_diagnostic.T0008.severity = silent
+
+### SA1602
+### SA1602 Requires documentation for enum members.
+dotnet_diagnostic.SA1602.severity = silent
