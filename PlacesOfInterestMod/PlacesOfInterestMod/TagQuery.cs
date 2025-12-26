@@ -152,7 +152,7 @@ public sealed class TagQuery
 
         foreach (string token in input.Split(" ", StringSplitOptions.RemoveEmptyEntries))
         {
-            Match match = Regex.Match(token.ToLower(), @"^(?<Sign>[\+\-])?(?:(?<Number>[1-9]\d*)(?<Unit>[yqmwd])|(?<Tag>.*))$");
+            Match match = Regex.Match(token.ToLower(), @"^(?<Sign>[\+\-])?(?:(?<Number>0|[1-9]\d*)(?<Unit>[yqmwd])|(?<Tag>.*))$");
             if (!match.Success)
             {
                 continue;
@@ -164,6 +164,11 @@ public sealed class TagQuery
             if (match.Groups["Number"].Success && match.Groups["Unit"].Success)
             {
                 if (!int.TryParse(match.Groups["Number"].Value, out int number))
+                {
+                    continue;
+                }
+
+                if (sign != "" && number == 0)
                 {
                     continue;
                 }

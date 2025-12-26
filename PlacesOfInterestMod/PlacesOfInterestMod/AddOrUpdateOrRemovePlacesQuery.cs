@@ -28,8 +28,7 @@ public sealed class AddOrUpdateOrRemovePlacesQuery
     }
 
     public void AddOrUpdateOrRemovePlaces(
-        List<Place> allPlaces,
-        List<Place> places,
+        Places places,
         Vec3d position,
         out int numberOfRemovedPlaces,
         out int numberOfChangedPlaces,
@@ -52,8 +51,7 @@ public sealed class AddOrUpdateOrRemovePlacesQuery
             if (place.Tags.Count > 0)
             {
                 numberOfAddedPlaces += 1;
-                allPlaces.Add(place);
-                places.Add(place);
+                places.AddToPlayerPlaces(place);
             }
 
             return;
@@ -64,8 +62,6 @@ public sealed class AddOrUpdateOrRemovePlacesQuery
             return;
         }
 
-        List<Place> placesToRemove = [];
-
         foreach (Place place in places)
         {
             _tagQuery.UpdatePlace(place, out bool tagsChanged);
@@ -75,18 +71,13 @@ public sealed class AddOrUpdateOrRemovePlacesQuery
                 if (place.Tags.Count == 0)
                 {
                     numberOfRemovedPlaces += 1;
-                    placesToRemove.Add(place);
+                    places.RemoveFromPlayerPlaces(place);
                 }
                 else
                 {
                     numberOfChangedPlaces += 1;
                 }
             }
-        }
-
-        foreach (Place place in placesToRemove)
-        {
-            allPlaces.Remove(place);
         }
     }
 

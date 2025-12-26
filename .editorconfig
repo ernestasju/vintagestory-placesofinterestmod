@@ -734,6 +734,8 @@ dotnet_diagnostic.S125.severity = silent
 ### T0008 requires properties to precede the constructors.
 dotnet_diagnostic.T0008.severity = silent
 
-### SA1602
 ### SA1602 Requires documentation for enum members.
 dotnet_diagnostic.SA1602.severity = silent
+
+### IDE0305: Simplify collection initialization
+dotnet_diagnostic.IDE0305.severity = silent

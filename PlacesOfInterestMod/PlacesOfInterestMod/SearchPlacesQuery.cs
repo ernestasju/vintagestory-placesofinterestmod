@@ -21,11 +21,9 @@ public sealed class SearchPlacesQuery
 
     public IEnumerable<TagPattern> TagPatternsToExclude => _tagQuery.ExcludedTagPatterns;
 
-    public void SearchPlaces(
-        List<Place> places,
-        out List<Place> matchingPlaces)
+    public Places SearchPlaces(Places places)
     {
-        matchingPlaces = places.Where(x => _tagQuery.TestPlace(x)).ToList();
+        return places.Where(x => _tagQuery.TestPlace(x));
     }
 
     public static SearchPlacesQuery Parse(string input, int day)

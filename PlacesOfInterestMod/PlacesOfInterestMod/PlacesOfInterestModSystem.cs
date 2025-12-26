@@ -15,10 +15,6 @@ namespace PlacesOfInterestMod;
 
 public class PlacesOfInterestModSystem : ModSystem
 {
-    private const string _placesOfInterestModDataKey = "places-of-interest-mod:placesOfInterest";
-    private const int _roughPlaceResolution = 8;
-    private const int _roughPlaceOffset = 4;
-
     private const string _placeOfInterestNetworkChannelName = "places-of-interest-mod";
 
     private ICoreServerAPI? _serverApi;
@@ -65,11 +61,13 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, LoadPlacesPacket packet) =>
             {
-                SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(packet.TagQueriesText, this.Today());
+                int day = this.Today();
 
-                LoadPlaces(fromPlayer, out List<Place> places);
+                SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(packet.TagQueriesText, day);
 
-                searchPlacesQuery.SearchPlaces(places, out List<Place> matchingPlaces);
+                PlayerPlaces places = PlayerPlaces.Load(fromPlayer, day);
+
+                List<Place> matchingPlaces = searchPlacesQuery.SearchPlaces(places.All).ToList();
 
                 _serverNetworkChannel.SendPacket(
                     new LoadedPlacesPacket()
@@ -84,94 +82,10 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, SavePlacesPacket packet) =>
             {
-                List<Place> newPlaces = (packet.Places ?? [])
-                    .SelectNonNulls(x => (Place?)x)
-                    .ToList();
-                ILookup<Vec3i, Place> newPlacesByRoughPlace = newPlaces
-                    .ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
+                List<Place> newPlaces = (packet.Places ?? []).SelectNonNulls(x => (Place?)x).ToList();
 
-                int day = this.Today();
-                LoadPlaces(fromPlayer, out List<Place> places);
-
-                foreach (IGrouping<Vec3i, Place> newPlaces2 in newPlacesByRoughPlace)
-                {
-                    List<Tag> newTags = newPlaces2
-                        .SelectMany(x => x.Tags)
-                        .Where(x => x.EndDay == 0 || x.EndDay >= day)
-                        .DistinctBy(x => x.Name)
-                        .ToList();
-
-                    FindPlacesByRoughPlace(
-                        places,
-                        newPlaces2.Key,
-                        out List<Place> placesCloseToPlayer);
-
-                    List<Tag> oldTags = placesCloseToPlayer
-                        .SelectMany(x => x.Tags)
-                        .Where(x => x.EndDay == 0 || x.EndDay >= day)
-                        .DistinctBy(x => x.Name)
-                        .ToList();
-
-                    if (oldTags.Count > 0 && packet.ExistingPlaceAction == ExistingPlaceAction.Skip)
-                    {
-                        continue;
-                    }
-
-                    List<TagGroup> tagGroupsToAdd = newTags
-                        .GroupBy(x => new { x.StartDay, x.EndDay })
-                        .Select(x => new TagGroup()
-                        {
-                            Names = x.Select(x => x.Name).ToArray(),
-                            StartDay = x.Key.StartDay,
-                            EndDay = x.Key.EndDay,
-                        })
-                        .ToList();
-
-                    foreach (TagGroup tagGroup in tagGroupsToAdd)
-                    {
-                        AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.CreateForUpdate(
-                            tagGroup.Names,
-                            [],
-                            packet.ExistingPlaceAction,
-                            day,
-                            tagGroup.StartDay,
-                            tagGroup.EndDay);
-
-                        addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
-                            places,
-                            placesCloseToPlayer,
-                            newPlaces2.First().XYZ,
-                            out int _,
-                            out int _,
-                            out int _);
-                    }
-
-                    if (packet.ExistingPlaceAction == ExistingPlaceAction.Replace)
-                    {
-                        List<TagName> tagNamesToRemove = oldTags
-                            .Where(x => !newTags.Any(y => y.Name == x.Name))
-                            .Select(x => x.Name)
-                            .ToList();
-
-                        AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.CreateForUpdate(
-                            [],
-                            tagNamesToRemove,
-                            ExistingPlaceAction.Update,
-                            day,
-                            0,
-                            0);
-
-                        addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
-                            places,
-                            placesCloseToPlayer,
-                            newPlaces2.First().XYZ,
-                            out int _,
-                            out int _,
-                            out int _);
-                    }
-                }
-
-                SavePlaces(fromPlayer, places);
+                PlayerPlaces places = PlayerPlaces.Load(fromPlayer, this.Today());
+                places.Import(newPlaces, packet.ExistingPlaceAction);
 
                 _serverNetworkChannel.SendPacket(
                     new SavedPlacesPacket()
@@ -194,7 +108,9 @@ public class PlacesOfInterestModSystem : ModSystem
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    RemoveAllPlaces(args.Caller.Player);
+                    PlayerPlaces
+                        .Load(args.Caller.Player, this.Today())
+                        .Clear();
 
                     return TextCommandResult.Success(
                         Lang.Get("places-of-interest-mod:clearedInterestingPlaces"));
@@ -214,36 +130,32 @@ public class PlacesOfInterestModSystem : ModSystem
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    Vec3d playerPosition = args.Caller.Pos;
+                    int day = this.Today();
 
                     AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.Parse(
                         args.LastArg?.ToString() ?? "",
-                        this.Today());
+                        day);
 
-                    LoadPlaces(args.Caller.Player, out List<Place> places);
+                    PlayerPlaces places = PlayerPlaces.Load(args.Caller.Player, day);
 
-                    FindPlacesByRoughPlace(
-                        places,
-                        playerPosition.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset),
-                        out List<Place> placesCloseToPlayer);
+                    Places placesCloseToPlayer = places.All.AtPlayerPosition();
 
-                    if (placesCloseToPlayer is [] && !addOrUpdateOrRemovePlacesQuery.HasTagNamesToInclude())
+                    if (placesCloseToPlayer.Count == 0 && !addOrUpdateOrRemovePlacesQuery.HasTagNamesToInclude())
                     {
                         return TextCommandResult.Success(
                             Lang.Get("places-of-interest-mod:interestingCommandResultNothingToAdd"));
                     }
 
                     addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
-                        places,
                         placesCloseToPlayer,
-                        playerPosition,
+                        args.Caller.Pos,
                         out int _,
                         out int _,
                         out int _);
 
-                    SavePlaces(args.Caller.Player, places);
+                    places.Save();
 
-                    if (placesCloseToPlayer is [])
+                    if (placesCloseToPlayer.Count == 0)
                     {
                         return TextCommandResult.Success(
                             Lang.Get(
@@ -277,11 +189,11 @@ public class PlacesOfInterestModSystem : ModSystem
                     Vec3d playerPosition = args.Caller.Pos;
                     int day = this.Today();
 
-                    SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(args.LastArg?.ToString() ?? "", this.Today());
+                    SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(args.LastArg?.ToString() ?? "", day);
 
-                    LoadPlaces(args.Caller.Player, out List<Place> places);
+                    PlayerPlaces places = PlayerPlaces.Load(args.Caller.Player, day);
 
-                    searchPlacesQuery.SearchPlaces(places, out List<Place> matchingPlaces);
+                    Places matchingPlaces = searchPlacesQuery.SearchPlaces(places.All);
 
                     if (matchingPlaces.Count == 0)
                     {
@@ -295,10 +207,7 @@ public class PlacesOfInterestModSystem : ModSystem
                                     searchPlacesQuery.TagPatternsToExclude)));
                     }
 
-                    FindNearestPlace(
-                        matchingPlaces,
-                        playerPosition,
-                        out Place nearestPlace);
+                    Place nearestPlace = matchingPlaces.FindNearestPlace(playerPosition);
 
                     return TextCommandResult.Success(
                         Lang.Get(
@@ -327,20 +236,13 @@ public class PlacesOfInterestModSystem : ModSystem
                         searchRadius = 16;
                     }
 
-                    Vec3d playerPosition = args.Caller.Pos;
                     int day = this.Today();
 
-                    LoadPlaces(args.Caller.Player, out List<Place> places);
+                    PlayerPlaces playerPlaces = PlayerPlaces.Load(args.Caller.Player, day);
 
-                    FindPlacesInRadius(
-                        places,
-                        playerPosition,
-                        searchRadius,
-                        out List<Place> placesInRadius);
+                    Places placesInRadius = playerPlaces.All.AroundPlayer(searchRadius);
 
-                    HashSet<TagName> uniqueTags = placesInRadius
-                        .SelectMany(x => x.CalculateActiveTagNames(day))
-                        .ToHashSet();
+                    HashSet<TagName> uniqueTags = placesInRadius.ActiveTags.ToHashSet();
 
                     if (uniqueTags.Count == 0)
                     {
@@ -378,19 +280,13 @@ public class PlacesOfInterestModSystem : ModSystem
                         searchRadius = int.MaxValue;
                     }
 
-                    Vec3d playerPosition = args.Caller.Pos;
-
                     SearchAndUpdateOrRemovePlacesQuery searchAndUpdateOrRemovePlacesQuery = SearchAndUpdateOrRemovePlacesQuery.Parse(
                         args.LastArg?.ToString() ?? "",
                         this.Today());
 
-                    LoadPlaces(args.Caller.Player, out List<Place> places);
+                    PlayerPlaces places = PlayerPlaces.Load(args.Caller.Player, this.Today());
 
-                    FindPlacesInRadius(
-                        places,
-                        playerPosition,
-                        searchRadius,
-                        out List<Place> placesCloseToPlayer);
+                    Places placesCloseToPlayer = places.All.AroundPlayer(searchRadius);
 
                     if (placesCloseToPlayer.Count == 0)
                     {
@@ -406,11 +302,12 @@ public class PlacesOfInterestModSystem : ModSystem
                     }
 
                     searchAndUpdateOrRemovePlacesQuery.SearchAndUpdatePlaces(
-                        places,
                         placesCloseToPlayer,
                         out int numberOfFoundPlaces,
                         out int _,
                         out int _);
+
+                    places.Save();
 
                     if (numberOfFoundPlaces == 0)
                     {
@@ -425,8 +322,6 @@ public class PlacesOfInterestModSystem : ModSystem
                                     searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToExclude)));
                     }
 
-                    SavePlaces(args.Caller.Player, places);
-
                     return TextCommandResult.Success(
                         Lang.Get(
                             "places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces",
@@ -439,16 +334,16 @@ public class PlacesOfInterestModSystem : ModSystem
                 });
 
         // NOTE: Commented for later.
-        // _serverApi.ChatCommands.Create()
-        //     .WithName("today")
-        //     .RequiresPlayer()
-        //     .RequiresPrivilege(Privilege.chat)
-        //     .WithDescription("Shows current day")
-        //     .HandleWith(
-        //         TextCommandResult (TextCommandCallingArgs args) =>
-        //         {
-        //             return TextCommandResult.Success(Today().ToString());
-        //         });
+        _serverApi.ChatCommands.Create()
+            .WithName("today")
+            .RequiresPlayer()
+            .RequiresPrivilege(Privilege.chat)
+            .WithDescription("Shows current day")
+            .HandleWith(
+                TextCommandResult (TextCommandCallingArgs args) =>
+                {
+                    return TextCommandResult.Success(Today().ToString());
+                });
     }
 
     private void RegisterClientNetworkChannels()
@@ -596,95 +491,20 @@ public class PlacesOfInterestModSystem : ModSystem
         return (int)_serverApi.World.Calendar.TotalDays;
     }
 
-    private static void FindNearestPlace(
-        List<Place> places,
-        Vec3d position,
-        out Place nearestPlace)
-    {
-        if (places.Count == 0)
-        {
-            throw new UnreachableException("No places to find nearest from.");
-        }
-
-        nearestPlace = places.MinBy(x => position.SquareDistanceTo(x.XYZ))!;
-    }
-
     private static string FormTagsText(
         IEnumerable<TagName> includedTagNames,
         IEnumerable<TagPattern> includedTagPatterns,
         IEnumerable<TagName> excludedTagNames,
         IEnumerable<TagPattern> excludedTagPatterns)
     {
-#pragma warning disable S3220 // Method calls should not resolve ambiguously to overloads with "params"
-        return string.Join(
-            " ",
+        string[] tags =
             [
-                .. includedTagNames.OrderBy(x => x.Value.ToLowerInvariant()),
-                .. includedTagPatterns.OrderBy(x => x.ToString().ToLowerInvariant()),
+                .. includedTagNames.OrderBy(x => x.Value.ToLowerInvariant()).Select(x => x.ToString()),
+                .. includedTagPatterns.OrderBy(x => x.ToString().ToLowerInvariant()).Select(x => x.ToString()),
                 .. excludedTagNames.OrderBy(x => x.Value.ToLowerInvariant()).Select(x => "-" + x),
                 .. excludedTagPatterns.OrderBy(x => x.ToString().ToLowerInvariant()).Select(x => "-" + x),
-            ]);
-#pragma warning restore S3220 // Method calls should not resolve ambiguously to overloads with "params"
-    }
+            ];
 
-    private static void FindPlacesByRoughPlace(
-        List<Place> places,
-        Vec3i roughPlayerPlacePosition,
-        out List<Place> matchingPlaces)
-    {
-        matchingPlaces = places
-            .Where(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset) == roughPlayerPlacePosition)
-            .ToList();
-    }
-
-    private static void FindPlacesInRadius(
-        List<Place> places,
-        Vec3d finePlayerPlacePosition,
-        double searchRadius,
-        out List<Place> matchingPlaces)
-    {
-        matchingPlaces = places
-            .Where(x => x.XYZ.ToXZ().DistanceTo(finePlayerPlacePosition.ToXZ()) <= searchRadius)
-            .ToList();
-    }
-
-    private static void SavePlaces(
-    IPlayer player,
-    List<Place> places)
-    {
-        List<ProtoPlace> protoPlaces = places
-            .Select(x => (ProtoPlace)x)
-            .ToList();
-
-        player.WorldData.SetModdata(_placesOfInterestModDataKey, SerializerUtil.Serialize(protoPlaces));
-    }
-
-    private static void RemoveAllPlaces(IPlayer player)
-    {
-        player.WorldData.RemoveModdata(_placesOfInterestModDataKey);
-    }
-
-    private static void LoadPlaces(
-        IPlayer player,
-        out List<Place> places)
-    {
-        try
-        {
-            places = SerializerUtil
-                .Deserialize<List<ProtoPlace>>(
-                    player.WorldData.GetModdata(_placesOfInterestModDataKey),
-                    [])
-                .SelectNonNulls(x => (Place?)x)
-                .ToList();
-        }
-        catch (ProtoException)
-        {
-            places = SerializerUtil
-                .Deserialize<List<OldProtoPlace>>(
-                    player.WorldData.GetModdata(_placesOfInterestModDataKey),
-                    [])
-                .SelectNonNulls(x => (Place?)x)
-                .ToList();
-        }
+        return string.Join(" ", tags);
     }
 }

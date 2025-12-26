@@ -33,8 +33,7 @@ public sealed class SearchAndUpdateOrRemovePlacesQuery
     public IEnumerable<TagPattern> UpdateTagPatternsToExclude => _updateTagQuery.ExcludedTagPatterns;
 
     public void SearchAndUpdatePlaces(
-        List<Place> allPlaces,
-        List<Place> places,
+        Places places,
         out int numberOfFoundPlaces,
         out int numberOfRemovedPlaces,
         out int numberOfChangedPlaces)
@@ -42,8 +41,6 @@ public sealed class SearchAndUpdateOrRemovePlacesQuery
         numberOfFoundPlaces = 0;
         numberOfChangedPlaces = 0;
         numberOfRemovedPlaces = 0;
-
-        List<Place> placesToRemove = [];
 
         foreach (Place place in places)
         {
@@ -60,18 +57,13 @@ public sealed class SearchAndUpdateOrRemovePlacesQuery
                 if (place.Tags.Count == 0)
                 {
                     numberOfRemovedPlaces += 1;
-                    placesToRemove.Add(place);
+                    places.RemoveFromPlayerPlaces(place);
                 }
                 else
                 {
                     numberOfChangedPlaces += 1;
                 }
             }
-        }
-
-        foreach (Place place in placesToRemove)
-        {
-            allPlaces.Remove(place);
         }
     }
 
