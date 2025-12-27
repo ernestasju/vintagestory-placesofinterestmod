@@ -1,9 +1,8 @@
-﻿using ProtoBuf;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Vintagestory.API.Common;
+using ProtoBuf;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace PlacesOfInterestMod;
 
@@ -13,22 +12,46 @@ public sealed class PlayerPlaces
     private const int _roughPlaceResolution = 8;
     private const int _roughPlaceOffset = 4;
 
-    private readonly IPlayer _player;
-    private readonly int _day;
+    private readonly PlayerPlacesOfInterest _poi;
     private readonly List<Place> _places;
 
-    public PlayerPlaces(IPlayer player, int day, IEnumerable<Place> places)
+    private PlayerPlaces(PlayerPlacesOfInterest poi, IEnumerable<Place> places)
     {
-        _player = player;
-        _day = day;
+        _poi = poi;
         _places = places.ToList();
     }
 
-    public Places All => new(this, _player, _day, _roughPlaceResolution, _roughPlaceOffset, _places);
+    public PlayerPlacesOfInterest PoI => _poi;
+
+    public Places All => new(this, _places);
+
+    public static Vec3i ToRoughPlace(Vec3d position)
+    {
+        return position.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset);
+    }
+
+    public static PlayerPlaces Load(PlayerPlacesOfInterest poi)
+    {
+        IEnumerable<Place> places;
+        try
+        {
+            places = poi
+                .LoadModData<List<ProtoPlace>>(_placesOfInterestModDataKey, [])
+                .SelectNonNulls(x => (Place?)x);
+        }
+        catch (ProtoException)
+        {
+            places = poi
+                .LoadModData<List<OldProtoPlace>>(_placesOfInterestModDataKey, [])
+                .SelectNonNulls(x => (Place?)x);
+        }
+
+        return new(poi, places);
+    }
 
     public void Clear()
     {
-        _player.WorldData.RemoveModdata(_placesOfInterestModDataKey);
+        _poi.RemoveModData(_placesOfInterestModDataKey);
 
         _places.Clear();
     }
@@ -39,7 +62,7 @@ public sealed class PlayerPlaces
             .Select(x => (ProtoPlace)x)
             .ToList();
 
-        _player.WorldData.SetModdata(_placesOfInterestModDataKey, SerializerUtil.Serialize(protoPlaces));
+        _poi.SaveModData(_placesOfInterestModDataKey, protoPlaces);
     }
 
     public void Add(Place place)
@@ -50,27 +73,6 @@ public sealed class PlayerPlaces
     public void Remove(Place place)
     {
         _places.Remove(place);
-    }
-
-    public static PlayerPlaces Load(IPlayer player, int day)
-    {
-        byte[] modData = player.WorldData.GetModdata(_placesOfInterestModDataKey);
-
-        IEnumerable<Place> places;
-        try
-        {
-            places = SerializerUtil
-                .Deserialize<List<ProtoPlace>>(modData, [])
-                .SelectNonNulls(x => (Place?)x);
-        }
-        catch (ProtoException)
-        {
-            places = SerializerUtil
-                .Deserialize<List<OldProtoPlace>>(modData, [])
-                .SelectNonNulls(x => (Place?)x);
-        }
-
-        return new(player, day, places);
     }
 
     public void Import(IEnumerable<Place> places, ExistingPlaceAction existingPlaceAction)
@@ -84,7 +86,7 @@ public sealed class PlayerPlaces
         {
             List<Tag> newTags = newPlaces2
                 .SelectMany(x => x.Tags)
-                .Where(x => x.EndDay == 0 || x.EndDay >= _day)
+                .Where(x => x.EndDay == 0 || x.EndDay >= _poi.Calendar.Today)
                 .DistinctBy(x => x.Name)
                 .ToList();
 
@@ -109,17 +111,20 @@ public sealed class PlayerPlaces
 
             foreach (TagGroup tagGroup in tagGroupsToAdd)
             {
-                AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.CreateForUpdate(
+                TagQueryWithDays tagQueryWithDays = TagQueryWithDays.CreateForUpdate(
                     tagGroup.Names,
                     [],
-                    existingPlaceAction,
-                    _day,
+                    existingPlaceAction == ExistingPlaceAction.Replace,
+                    _poi.Calendar.Today,
                     tagGroup.StartDay,
                     tagGroup.EndDay);
 
-                addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
-                    placesCloseToPlayer,
+                placesCloseToPlayer.Update(
+                    tagQueryWithDays,
                     newPlaces2.First().XYZ,
+                    allowRemove: existingPlaceAction == ExistingPlaceAction.Replace,
+                    allowChange: existingPlaceAction != ExistingPlaceAction.Skip,
+                    allowAdd: true,
                     out int _,
                     out int _,
                     out int _);
@@ -132,17 +137,20 @@ public sealed class PlayerPlaces
                     .Select(x => x.Name)
                     .ToList();
 
-                AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.CreateForUpdate(
+                TagQueryWithDays tagQueryWithDays = TagQueryWithDays.CreateForUpdate(
                     [],
                     tagNamesToRemove,
-                    ExistingPlaceAction.Update,
-                    _day,
+                    false,
+                    _poi.Calendar.Today,
                     0,
                     0);
 
-                addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
-                    placesCloseToPlayer,
+                placesCloseToPlayer.Update(
+                    tagQueryWithDays,
                     newPlaces2.First().XYZ,
+                    allowRemove: true,
+                    allowChange: true,
+                    allowAdd: true,
                     out int _,
                     out int _,
                     out int _);
@@ -150,5 +158,15 @@ public sealed class PlayerPlaces
         }
 
         Save();
+    }
+
+    public double CalculateHorizontalDistance(Place place)
+    {
+        return _poi.XZ.DistanceTo(place.XYZ.ToXZ());
+    }
+
+    public double CalculateVerticalDistance(Place place)
+    {
+        return place.XYZ.Y - _poi.XYZ.Y;
     }
 }

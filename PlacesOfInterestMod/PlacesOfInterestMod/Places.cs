@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace PlacesOfInterestMod;
@@ -10,25 +9,13 @@ namespace PlacesOfInterestMod;
 public sealed class Places : IEnumerable<Place>
 {
     private readonly PlayerPlaces _playerPlaces;
-    private readonly IPlayer _player;
-    private readonly int _day;
-    private readonly int _roughPlaceResolution;
-    private readonly int _roughPlaceOffset;
     private readonly List<Place> _places;
 
     public Places(
         PlayerPlaces playerPlaces,
-        IPlayer player,
-        int day,
-        int roughPlaceResolution,
-        int roughPlaceOffset,
         IEnumerable<Place> places)
     {
         _playerPlaces = playerPlaces;
-        _player = player;
-        _day = day;
-        _roughPlaceResolution = roughPlaceResolution;
-        _roughPlaceOffset = roughPlaceOffset;
         _places = places.ToList();
     }
 
@@ -37,62 +24,57 @@ public sealed class Places : IEnumerable<Place>
     public IEnumerable<Tag> Tags =>
         _places
             .SelectMany(x => x.Tags)
-            .Where(x => x.EndDay == 0 || x.EndDay >= _day)
+            .Where(x => x.EndDay == 0 || x.EndDay >= _playerPlaces.PoI.Calendar.Today)
             .DistinctBy(x => x.Name);
 
     public IEnumerable<TagName> ActiveTags =>
         _places
-            .SelectMany(x => x.CalculateActiveTagNames(_day));
+            .SelectMany(x => x.CalculateActiveTagNames(_playerPlaces.PoI.Calendar.Today));
 
     public Places AtPlayerPosition()
     {
-        return AtRoughPlace(_player.Entity.Pos.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
+        return AtRoughPlace(PlayerPlaces.ToRoughPlace(_playerPlaces.PoI.XYZ));
     }
 
     public Places AtRoughPlace(Vec3i roughPlace)
     {
         return new(
             _playerPlaces,
-            _player,
-            _day,
-            _roughPlaceResolution,
-            _roughPlaceOffset,
-            _places.Where(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset) == roughPlace));
+            _places.Where(x => PlayerPlaces.ToRoughPlace(x.XYZ) == roughPlace));
     }
 
     public Places AroundPlayer(double radius)
     {
-        Vec2d finePlayerPosition = _player.Entity.Pos.XYZ.ToXZ();
-
-        return new(
-            _playerPlaces,
-            _player,
-            _day,
-            _roughPlaceResolution,
-            _roughPlaceOffset,
-            _places.Where(x => x.XYZ.ToXZ().DistanceTo(finePlayerPosition) <= radius));
+        return AroundPlace(_playerPlaces.PoI.XZ, radius);
     }
 
-    public Places WithTags(TagQuery tagQuery)
+    public Places AroundPlace(Vec2d place, double radius)
     {
         return new(
             _playerPlaces,
-            _player,
-            _day,
-            _roughPlaceResolution,
-            _roughPlaceOffset,
-            _places.Where(x => tagQuery.TestPlace(x)));
+            _places.Where(x => x.XYZ.ToXZ().DistanceTo(place) <= radius));
+    }
+
+    public Places Where(TagQuery tagQuery)
+    {
+        return Where(tagQuery.WithDays(_playerPlaces.PoI.Calendar));
+    }
+
+    public Places Where(TagQueryWithDays tagQueryWithDays)
+    {
+        return Where(x => tagQueryWithDays.TestPlace(x));
     }
 
     public Places Where(System.Func<Place, bool> predicate)
     {
         return new(
             _playerPlaces,
-            _player,
-            _day,
-            _roughPlaceResolution,
-            _roughPlaceOffset,
             _places.Where(predicate));
+    }
+
+    public Place FindNearestPlace()
+    {
+        return FindNearestPlace(_playerPlaces.PoI.XYZ);
     }
 
     public Place FindNearestPlace(
@@ -110,6 +92,91 @@ public sealed class Places : IEnumerable<Place>
         }
 
         return _places.MinBy(x => position.SquareDistanceTo(x.XYZ))!;
+    }
+
+    public void Update(
+        TagQuery tagQuery,
+        Vec3d position,
+        bool allowRemove,
+        bool allowChange,
+        bool allowAdd,
+        out int numberOfRemovedPlaces,
+        out int numberOfChangedPlaces,
+        out int numberOfAddedPlaces)
+    {
+        TagQueryWithDays tagQueryWithDays = tagQuery.WithDays(_playerPlaces.PoI.Calendar);
+
+        Update(
+            tagQueryWithDays,
+            position,
+            allowRemove,
+            allowChange,
+            allowAdd,
+            out numberOfRemovedPlaces,
+            out numberOfChangedPlaces,
+            out numberOfAddedPlaces);
+    }
+
+    public void Update(
+        TagQueryWithDays tagQueryWithDays,
+        Vec3d position,
+        bool allowRemove,
+        bool allowChange,
+        bool allowAdd,
+        out int numberOfRemovedPlaces,
+        out int numberOfChangedPlaces,
+        out int numberOfAddedPlaces)
+    {
+        numberOfRemovedPlaces = 0;
+        numberOfChangedPlaces = 0;
+        numberOfAddedPlaces = 0;
+
+        if (Count == 0)
+        {
+            if (!allowAdd)
+            {
+                return;
+            }
+
+            Place place = new()
+            {
+                XYZ = position,
+                Tags = [],
+            };
+
+            tagQueryWithDays.UpdatePlace(place, false, out bool _);
+
+            if (place.Tags.Count > 0)
+            {
+                numberOfAddedPlaces += 1;
+                AddToPlayerPlaces(place);
+            }
+
+            return;
+        }
+
+        if (!allowRemove && !allowChange)
+        {
+            return;
+        }
+
+        foreach (Place place in _places)
+        {
+            tagQueryWithDays.UpdatePlace(place, allowRemove, out bool tagsChanged);
+
+            if (tagsChanged)
+            {
+                if (place.Tags.Count == 0)
+                {
+                    numberOfRemovedPlaces += 1;
+                    RemoveFromPlayerPlaces(place);
+                }
+                else
+                {
+                    numberOfChangedPlaces += 1;
+                }
+            }
+        }
     }
 
     public void AddToPlayerPlaces(Place place)

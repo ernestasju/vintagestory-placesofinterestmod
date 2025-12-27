@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
-using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace PlacesOfInterestMod;
 
@@ -61,18 +57,14 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, LoadPlacesPacket packet) =>
             {
-                int day = this.Today();
-
-                SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(packet.TagQueriesText, day);
-
-                PlayerPlaces places = PlayerPlaces.Load(fromPlayer, day);
-
-                List<Place> matchingPlaces = searchPlacesQuery.SearchPlaces(places.All).ToList();
+                PlayerPlacesOfInterest poi = new(fromPlayer);
 
                 _serverNetworkChannel.SendPacket(
                     new LoadedPlacesPacket()
                     {
-                        Places = matchingPlaces
+                        Places = poi.Places
+                            .All
+                            .Where(TagQuery.Parse(packet.TagQueriesText))
                             .Select(x => (ProtoPlace)x)
                             .ToList(),
                     },
@@ -84,8 +76,8 @@ public class PlacesOfInterestModSystem : ModSystem
             {
                 List<Place> newPlaces = (packet.Places ?? []).SelectNonNulls(x => (Place?)x).ToList();
 
-                PlayerPlaces places = PlayerPlaces.Load(fromPlayer, this.Today());
-                places.Import(newPlaces, packet.ExistingPlaceAction);
+                PlayerPlacesOfInterest poi = new(fromPlayer);
+                poi.Places.Import(newPlaces, packet.ExistingPlaceAction);
 
                 _serverNetworkChannel.SendPacket(
                     new SavedPlacesPacket()
@@ -108,9 +100,8 @@ public class PlacesOfInterestModSystem : ModSystem
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    PlayerPlaces
-                        .Load(args.Caller.Player, this.Today())
-                        .Clear();
+                    PlayerPlacesOfInterest poi = new(args.Caller.Player);
+                    poi.Places.Clear();
 
                     return TextCommandResult.Success(
                         Lang.Get("places-of-interest-mod:clearedInterestingPlaces"));
@@ -130,37 +121,36 @@ public class PlacesOfInterestModSystem : ModSystem
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    int day = this.Today();
+                    PlayerPlacesOfInterest poi = new(args.Caller.Player);
 
-                    AddOrUpdateOrRemovePlacesQuery addOrUpdateOrRemovePlacesQuery = AddOrUpdateOrRemovePlacesQuery.Parse(
-                        args.LastArg?.ToString() ?? "",
-                        day);
+                    TagQuery tagQuery = TagQuery.Parse(args.LastArg?.ToString() ?? "");
 
-                    PlayerPlaces places = PlayerPlaces.Load(args.Caller.Player, day);
+                    Places placesCloseToPlayer = poi.Places.All.AtPlayerPosition();
 
-                    Places placesCloseToPlayer = places.All.AtPlayerPosition();
-
-                    if (placesCloseToPlayer.Count == 0 && !addOrUpdateOrRemovePlacesQuery.HasTagNamesToInclude())
+                    if (placesCloseToPlayer.Count == 0 && !tagQuery.IncludedTagNames.Any())
                     {
                         return TextCommandResult.Success(
                             Lang.Get("places-of-interest-mod:interestingCommandResultNothingToAdd"));
                     }
 
-                    addOrUpdateOrRemovePlacesQuery.AddOrUpdateOrRemovePlaces(
-                        placesCloseToPlayer,
+                    placesCloseToPlayer.Update(
+                        tagQuery,
                         args.Caller.Pos,
+                        allowRemove: true,
+                        allowChange: true,
+                        allowAdd: true,
                         out int _,
                         out int _,
                         out int _);
 
-                    places.Save();
+                    poi.Places.Save();
 
                     if (placesCloseToPlayer.Count == 0)
                     {
                         return TextCommandResult.Success(
                             Lang.Get(
                                 "places-of-interest-mod:interestingCommandResult",
-                                FormTagsText(addOrUpdateOrRemovePlacesQuery.TagNamesToInclude, [], [], [])));
+                                FormTagsText(tagQuery.IncludedTagNames, [], [], [])));
                     }
                     else
                     {
@@ -168,10 +158,10 @@ public class PlacesOfInterestModSystem : ModSystem
                             Lang.Get(
                                 "places-of-interest-mod:interestingCommandResultUpdated",
                                 FormTagsText(
-                                    addOrUpdateOrRemovePlacesQuery.TagNamesToInclude,
+                                    tagQuery.IncludedTagNames,
                                     [],
-                                    addOrUpdateOrRemovePlacesQuery.TagNamesToExclude,
-                                    addOrUpdateOrRemovePlacesQuery.TagPatternsToExclude)));
+                                    tagQuery.ExcludedTagNames,
+                                    tagQuery.ExcludedTagPatterns)));
                     }
                 });
 
@@ -186,14 +176,11 @@ public class PlacesOfInterestModSystem : ModSystem
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    Vec3d playerPosition = args.Caller.Pos;
-                    int day = this.Today();
+                    PlayerPlacesOfInterest poi = new(args.Caller.Player);
 
-                    SearchPlacesQuery searchPlacesQuery = SearchPlacesQuery.Parse(args.LastArg?.ToString() ?? "", day);
+                    TagQuery tagQuery = TagQuery.Parse(args.LastArg?.ToString() ?? "");
 
-                    PlayerPlaces places = PlayerPlaces.Load(args.Caller.Player, day);
-
-                    Places matchingPlaces = searchPlacesQuery.SearchPlaces(places.All);
+                    Places matchingPlaces = poi.Places.All.Where(tagQuery);
 
                     if (matchingPlaces.Count == 0)
                     {
@@ -201,20 +188,20 @@ public class PlacesOfInterestModSystem : ModSystem
                             Lang.Get(
                                 "places-of-interest-mod:noMatchingPlacesFound",
                                 FormTagsText(
-                                    searchPlacesQuery.TagNamesToInclude,
-                                    searchPlacesQuery.TagPatternsToInclude,
-                                    searchPlacesQuery.TagNamesToExclude,
-                                    searchPlacesQuery.TagPatternsToExclude)));
+                                    tagQuery.IncludedTagNames,
+                                    tagQuery.IncludedTagPatterns,
+                                    tagQuery.ExcludedTagNames,
+                                    tagQuery.ExcludedTagPatterns)));
                     }
 
-                    Place nearestPlace = matchingPlaces.FindNearestPlace(playerPosition);
+                    Place nearestPlace = matchingPlaces.FindNearestPlace();
 
                     return TextCommandResult.Success(
                         Lang.Get(
                             "places-of-interest-mod:foundNearestPlace",
-                            FormTagsText(nearestPlace.CalculateActiveTagNames(day), [], [], []),
-                            (int)Math.Round(playerPosition.ToXZ().DistanceTo(nearestPlace.XYZ.ToXZ())),
-                            (int)Math.Round(nearestPlace.XYZ.Y - playerPosition.Y)));
+                            FormTagsText(nearestPlace.CalculateActiveTagNames(poi.Calendar.Today), [], [], []),
+                            (int)Math.Round(poi.Places.CalculateHorizontalDistance(nearestPlace)),
+                            (int)Math.Round(poi.Places.CalculateVerticalDistance(nearestPlace))));
                 });
 
         _serverApi.ChatCommands.Create()
@@ -236,11 +223,9 @@ public class PlacesOfInterestModSystem : ModSystem
                         searchRadius = 16;
                     }
 
-                    int day = this.Today();
+                    PlayerPlacesOfInterest poi = new(args.Caller.Player);
 
-                    PlayerPlaces playerPlaces = PlayerPlaces.Load(args.Caller.Player, day);
-
-                    Places placesInRadius = playerPlaces.All.AroundPlayer(searchRadius);
+                    Places placesInRadius = poi.Places.All.AroundPlayer(searchRadius);
 
                     HashSet<TagName> uniqueTags = placesInRadius.ActiveTags.ToHashSet();
 
@@ -280,13 +265,11 @@ public class PlacesOfInterestModSystem : ModSystem
                         searchRadius = int.MaxValue;
                     }
 
-                    SearchAndUpdateOrRemovePlacesQuery searchAndUpdateOrRemovePlacesQuery = SearchAndUpdateOrRemovePlacesQuery.Parse(
-                        args.LastArg?.ToString() ?? "",
-                        this.Today());
+                    PlayerPlacesOfInterest poi = new(args.Caller.Player);
 
-                    PlayerPlaces places = PlayerPlaces.Load(args.Caller.Player, this.Today());
+                    (TagQuery searchTagQuery, TagQuery updateTagQuery) = TagQuery.ParseSearchAndUpdate(args.LastArg?.ToString() ?? "");
 
-                    Places placesCloseToPlayer = places.All.AroundPlayer(searchRadius);
+                    Places placesCloseToPlayer = poi.Places.All.AroundPlayer(searchRadius);
 
                     if (placesCloseToPlayer.Count == 0)
                     {
@@ -295,55 +278,65 @@ public class PlacesOfInterestModSystem : ModSystem
                                 "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
                                 searchRadius,
                                 FormTagsText(
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToInclude,
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToInclude,
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToExclude,
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToExclude)));
+                                    searchTagQuery.IncludedTagNames,
+                                    searchTagQuery.IncludedTagPatterns,
+                                    searchTagQuery.ExcludedTagNames,
+                                    searchTagQuery.ExcludedTagPatterns)));
                     }
 
-                    searchAndUpdateOrRemovePlacesQuery.SearchAndUpdatePlaces(
-                        placesCloseToPlayer,
-                        out int numberOfFoundPlaces,
-                        out int _,
+                    Places matchingPlaces = placesCloseToPlayer.Where(searchTagQuery);
+
+                    matchingPlaces.Update(
+                        updateTagQuery,
+                        poi.XYZ,
+                        true,
+                        true,
+                        true,
+                        out int numberOfRemovedPlaces,
+                        out int numberOfChangedPlaces,
                         out int _);
 
-                    places.Save();
+                    poi.Places.Save();
 
-                    if (numberOfFoundPlaces == 0)
+                    if (matchingPlaces.Count == 0)
                     {
                         return TextCommandResult.Success(
                             Lang.Get(
                                 "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
                                 searchRadius,
                                 FormTagsText(
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToInclude,
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToInclude,
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagNamesToExclude,
-                                    searchAndUpdateOrRemovePlacesQuery.SearchTagPatternsToExclude)));
+                                    searchTagQuery.IncludedTagNames,
+                                    searchTagQuery.IncludedTagPatterns,
+                                    searchTagQuery.ExcludedTagNames,
+                                    searchTagQuery.ExcludedTagPatterns)));
                     }
 
                     return TextCommandResult.Success(
                         Lang.Get(
                             "places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces",
-                            numberOfFoundPlaces,
+                            matchingPlaces.Count,
                             FormTagsText(
-                                searchAndUpdateOrRemovePlacesQuery.UpdateTagNamesToInclude,
-                                searchAndUpdateOrRemovePlacesQuery.UpdateTagPatternsToInclude,
-                                searchAndUpdateOrRemovePlacesQuery.UpdateTagNamesToExclude,
-                                searchAndUpdateOrRemovePlacesQuery.UpdateTagPatternsToExclude)));
+                                updateTagQuery.IncludedTagNames,
+                                updateTagQuery.IncludedTagPatterns,
+                                updateTagQuery.ExcludedTagNames,
+                                updateTagQuery.ExcludedTagPatterns),
+                            numberOfRemovedPlaces,
+                            numberOfChangedPlaces));
                 });
 
         // NOTE: Commented for later.
-        _serverApi.ChatCommands.Create()
-            .WithName("today")
-            .RequiresPlayer()
-            .RequiresPrivilege(Privilege.chat)
-            .WithDescription("Shows current day")
-            .HandleWith(
-                TextCommandResult (TextCommandCallingArgs args) =>
-                {
-                    return TextCommandResult.Success(Today().ToString());
-                });
+        // _serverApi.ChatCommands.Create()
+        //     .WithName("today")
+        //     .RequiresPlayer()
+        //     .RequiresPrivilege(Privilege.chat)
+        //     .WithDescription("Shows current day")
+        //     .HandleWith(
+        //         TextCommandResult (TextCommandCallingArgs args) =>
+        //         {
+        //             PlayerPlacesOfInterest poi = new(args.Caller.Player);
+        //
+        //             return TextCommandResult.Success(poi.Today.ToString());
+        //         });
     }
 
     private void RegisterClientNetworkChannels()
@@ -482,13 +475,6 @@ public class PlacesOfInterestModSystem : ModSystem
                     return TextCommandResult.Success(
                         Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultUploadInProgress"));
                 });
-    }
-
-    private int Today()
-    {
-        ArgumentNullException.ThrowIfNull(_serverApi);
-
-        return (int)_serverApi.World.Calendar.TotalDays;
     }
 
     private static string FormTagsText(

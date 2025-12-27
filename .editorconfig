@@ -739,3 +739,11 @@ dotnet_diagnostic.SA1602.severity = silent
 
 ### IDE0305: Simplify collection initialization
 dotnet_diagnostic.IDE0305.severity = silent
+
+### T0003: Do not use ValueTuple in the production code due to missing System.ValueTuple.dll.
+### T0003 is wrongly reporting System.ValueTuple as missing.
+dotnet_diagnostic.T0003.severity = silent
+
+### IDE0290: Use primary constructor.
+### Primary constructor syntax is too cluttered when constructor has many parameters. Also the backing *variables* are not readonly.
+dotnet_diagnostic.IDE0290.severity = silent
