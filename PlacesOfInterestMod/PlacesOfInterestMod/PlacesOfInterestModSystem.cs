@@ -64,6 +64,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     {
                         Places = poi.Places
                             .All
+                            .AroundPlayer(packet.SearchRadius)
                             .Where(TagQuery.Parse(packet.TagQueriesText))
                             .Select(x => (ProtoPlace)x)
                             .ToList(),
