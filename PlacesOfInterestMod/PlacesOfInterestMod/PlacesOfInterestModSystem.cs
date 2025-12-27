@@ -397,9 +397,9 @@ public class PlacesOfInterestModSystem : ModSystem
                     // NOTE: Arg is guaranteed to exist.
                     int searchRadius = (int)args[0];
 
-                    if (searchRadius < 0)
+                    if (searchRadius <= 0)
                     {
-                        searchRadius = 16;
+                        searchRadius = int.MaxValue;
                     }
 
                     string tagQueriesText = args.LastArg?.ToString() ?? "";
