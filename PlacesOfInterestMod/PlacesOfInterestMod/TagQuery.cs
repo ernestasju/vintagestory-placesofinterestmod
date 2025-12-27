@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -120,7 +121,7 @@ public sealed class TagQuery
 
         foreach (string token in input.Split(" ", StringSplitOptions.RemoveEmptyEntries))
         {
-            Match match = Regex.Match(token.ToLower(), @"^(?<Sign>[\+\-])?(?:(?<Number>0|[1-9]\d*)(?<Unit>[yqmwd])|(?<Tag>.*))$");
+            Match match = Regex.Match(token.ToLower(), @"^(?<Sign>[\+\-])?(?:(?<Number>0|[1-9]\d*)(?<Unit>[yqmwd])|(?<Tag>.+))$");
             if (!match.Success)
             {
                 continue;
@@ -169,33 +170,46 @@ public sealed class TagQuery
                 }
             }
 
-            string tag = match.Groups["Tag"].Value;
-            bool wildcard = IsWildcardPattern(tag);
-            if (!wildcard && tag.StartsWith('"') && tag.EndsWith('"'))
+            if (match.Groups["Tag"].Success)
             {
-                tag = tag[1..^1];
-            }
+                string tag = match.Groups["Tag"].Value;
+                bool pattern = TagPattern.IsPattern(tag);
+                bool wildcardPattern = pattern && TagPattern.IsWildcardPattern(tag);
 
-            if (sign == "-")
-            {
-                if (IsWildcardPattern(tag))
+                tag = tag switch
                 {
-                    excludedTagPatterns.Add(new TagPattern(tag));
+                    _ when pattern => TagPattern.Unquote(tag),
+                    _ when TagName.IsName(tag) => TagName.Unquote(tag),
+                    _ => tag,
+                };
+
+                if (sign == "-")
+                {
+                    if (pattern && !wildcardPattern)
+                    {
+                        pattern = false;
+                        tag = tag.Replace(@"\\", @"\").Replace(@"\?", @"?").Replace(@"\*", @"*");
+                    }
+
+                    if (pattern)
+                    {
+                        excludedTagPatterns.Add(new TagPattern(tag));
+                    }
+                    else
+                    {
+                        excludedTagNames.Add(new TagName(tag));
+                    }
                 }
                 else
                 {
-                    excludedTagNames.Add(new TagName(tag));
-                }
-            }
-            else
-            {
-                if (IsWildcardPattern(tag))
-                {
-                    includedTagPatterns.Add(new TagPattern(tag));
-                }
-                else
-                {
-                    includedTagNames.Add(new TagName(tag));
+                    if (pattern)
+                    {
+                        includedTagPatterns.Add(new TagPattern(tag));
+                    }
+                    else
+                    {
+                        includedTagNames.Add(new TagName(tag));
+                    }
                 }
             }
         }
@@ -215,20 +229,5 @@ public sealed class TagQuery
             startOffsetUnit,
             endOffset,
             endOffsetUnit);
-    }
-
-    private static bool IsWildcardPattern(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        if (value.StartsWith('"') && value.EndsWith('"'))
-        {
-            return false;
-        }
-
-        return Regex.IsMatch(value, @"^(?:\\\*|\\\?|\\\\|[^*?\\])*[*?]");
     }
 }

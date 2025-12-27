@@ -134,6 +134,12 @@ public class PlacesOfInterestModSystem : ModSystem
                             Lang.Get("places-of-interest-mod:interestingCommandResultNothingToAdd"));
                     }
 
+                    if (placesCloseToPlayer.Count > 0 && !tagQuery.IncludedTagNames.Any() && !tagQuery.ExcludedTagNames.Any() && !tagQuery.ExcludedTagPatterns.Any())
+                    {
+                        return TextCommandResult.Success(
+                            Lang.Get("places-of-interest-mod:interestingCommandResultNothingToAddChangeOrRemove"));
+                    }
+
                     placesCloseToPlayer.Update(
                         tagQuery,
                         args.Caller.Pos,

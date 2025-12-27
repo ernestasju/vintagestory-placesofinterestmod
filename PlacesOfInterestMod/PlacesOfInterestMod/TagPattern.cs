@@ -15,9 +15,34 @@ public sealed class TagPattern : IEquatable<TagPattern?>
         _value = value;
     }
 
+    public static bool operator ==(TagPattern? left, TagPattern? right)
+    {
+        return EqualityComparer<TagPattern>.Default.Equals(left, right);
+    }
+
+    public static bool operator !=(TagPattern? left, TagPattern? right)
+    {
+        return !(left == right);
+    }
+
     public override string ToString()
     {
-        return _value;
+        return $"~{_value}";
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as TagPattern);
+    }
+
+    public bool Equals(TagPattern? other)
+    {
+        return other is not null && _value == other._value;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(_value);
     }
 
     public bool Test(
@@ -42,30 +67,18 @@ public sealed class TagPattern : IEquatable<TagPattern?>
             RegexOptions.IgnoreCase);
     }
 
-    public override bool Equals(object? obj)
+    public static bool IsPattern(string input)
     {
-        return Equals(obj as TagPattern);
+        return input.StartsWith('~');
     }
 
-    public bool Equals(TagPattern? other)
+    public static bool IsWildcardPattern(string input)
     {
-        return other is not null && _value == other._value;
+        return Regex.IsMatch(input, @"^~(?:\\\*|\\\?|\\\\|[^*?\\])*[*?]");
     }
 
-    public override int GetHashCode()
+    public static string Unquote(string input)
     {
-        return HashCode.Combine(_value);
+        return input[1..];
     }
-
-#pragma warning disable SA1201 // Elements should appear in the correct order
-    public static bool operator ==(TagPattern? left, TagPattern? right)
-    {
-        return EqualityComparer<TagPattern>.Default.Equals(left, right);
-    }
-
-    public static bool operator !=(TagPattern? left, TagPattern? right)
-    {
-        return !(left == right);
-    }
-#pragma warning restore SA1201 // Elements should appear in the correct order
 }

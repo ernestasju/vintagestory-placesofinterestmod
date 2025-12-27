@@ -6,6 +6,7 @@
   "interestingCommandExample1": "/interesting iron ore # records place with tags [iron] and [ore] (and also [place]).",
   "interestingCommandExample2": "/interesting cat -dog # records place with tag [cat] and if place is already recorded removes its [dog] tag.",
   "interestingCommandResultNothingToAdd": "There are no tags to add.",
+  "interestingCommandResultNothingToAddChangeOrRemove": "There are no tags to add, change or remove.",
   "interestingCommandResult": "Recorded interesting place with tags [{0}].",
   "interestingCommandResultUpdated": "Updated interesting place with tags [{0}].",
   "findInterestingPlaceCommandDescription": "Finds a recorded place that has given tags.",

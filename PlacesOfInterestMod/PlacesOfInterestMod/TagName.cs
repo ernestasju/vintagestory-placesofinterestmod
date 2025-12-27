@@ -21,8 +21,6 @@ public sealed class TagName : IEquatable<TagName?>
 
     public string Value => _value;
 
-    public string QuotedString => $@"""{_value}""";
-
     public static bool operator ==(TagName? left, TagName? right)
     {
         return EqualityComparer<TagName>.Default.Equals(left, right);
@@ -35,18 +33,12 @@ public sealed class TagName : IEquatable<TagName?>
 
     public override string ToString()
     {
-        if (_value.Contains('*') || _value.Contains('?') || _value.Contains('\\') || _value.Contains('"'))
+        if (TagPattern.IsPattern(_value))
         {
-            return QuotedString;
+            return $@"""{_value}""";
         }
 
         return _value;
-    }
-
-    public bool Matches(TagPattern tagPattern)
-    {
-        ArgumentNullException.ThrowIfNull(tagPattern);
-        return tagPattern.Test(this);
     }
 
     public override bool Equals(object? obj)
@@ -62,5 +54,32 @@ public sealed class TagName : IEquatable<TagName?>
     public override int GetHashCode()
     {
         return HashCode.Combine(_value);
+    }
+
+    public bool Matches(TagPattern tagPattern)
+    {
+        ArgumentNullException.ThrowIfNull(tagPattern);
+        return tagPattern.Test(this);
+    }
+
+    public static bool IsName(string input)
+    {
+        return !input.StartsWith('~') || (input.StartsWith('"') && input.EndsWith('"'));
+    }
+
+    public static string Unquote(string input)
+    {
+        if (input.StartsWith("#~"))
+        {
+            // NOTE: Keep pattern start so we can stringify value correctly.
+            return input[1..];
+        }
+
+        if (input.StartsWith('"') && input.EndsWith('"'))
+        {
+            return input[1..^1];
+        }
+
+        return input;
     }
 }
