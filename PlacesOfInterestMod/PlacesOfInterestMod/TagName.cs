@@ -33,7 +33,7 @@ public sealed class TagName : IEquatable<TagName?>
 
     public override string ToString()
     {
-        if (TagPattern.IsPattern(_value))
+        if (TagPattern.DetectPatternType(_value) != TagPatternType.None)
         {
             return $@"""{_value}""";
         }

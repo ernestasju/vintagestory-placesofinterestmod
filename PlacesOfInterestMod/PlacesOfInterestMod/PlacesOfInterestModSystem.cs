@@ -218,7 +218,8 @@ public class PlacesOfInterestModSystem : ModSystem
             .RequiresPrivilege(Privilege.chat)
             .WithDescription(Lang.Get("places-of-interest-mod:whatsSoInterestingCommandDescription"))
             .WithArgs(
-                _serverApi.ChatCommands.Parsers.OptionalInt("radius", 100))
+                _serverApi.ChatCommands.Parsers.OptionalInt("radius", 100),
+                _serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
@@ -232,9 +233,15 @@ public class PlacesOfInterestModSystem : ModSystem
 
                     PlayerPlacesOfInterest poi = new(args.Caller.Player);
 
-                    Places placesInRadius = poi.Places.All.AroundPlayer(searchRadius);
+                    (TagQuery searchTagQuery, TagQuery filterTagQuery) = TagQuery.ParseSearchPlacesAndFilterTags(args.LastArg?.ToString() ?? "");
 
-                    HashSet<TagName> uniqueTags = placesInRadius.ActiveTags.ToHashSet();
+                    Places matchingPlaces = poi.Places.All
+                        .AroundPlayer(searchRadius)
+                        .Where(searchTagQuery);
+
+                    HashSet<TagName> uniqueTags = matchingPlaces.ActiveTags
+                        .Where(x => filterTagQuery.TestTag(x))
+                        .ToHashSet();
 
                     if (uniqueTags.Count == 0)
                     {

@@ -1,6 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace PlacesOfInterestMod;
@@ -52,6 +52,33 @@ public sealed class TagQuery
         return _includedTagNames.Count > 0;
     }
 
+    public bool TestTag(TagName tagName)
+    {
+        return
+            (
+                (_includedTagNames.Count == 0 && _includedTagPatterns.Count == 0) ||
+                (_includedTagNames.Count > 0 && _includedTagNames.Contains(tagName)) ||
+                (_includedTagPatterns.Count > 0 && _includedTagPatterns.Any(x => x.Test(tagName)))) &&
+            !(
+                _excludedTagNames.Contains(tagName) ||
+                _excludedTagPatterns.Any(x => x.Test(tagName)) ||
+                _additionalExcludedTagNames.Contains(tagName));
+    }
+
+    public TagQuery WithAdditionalExcludedNames(IEnumerable<TagName> tagNames)
+    {
+        return new(
+            _includedTagNames,
+            _includedTagPatterns,
+            _excludedTagNames,
+            _excludedTagPatterns,
+            _additionalExcludedTagNames.Union(tagNames).ToHashSet(),
+            _startOffset,
+            _startOffsetUnit,
+            _endOffset,
+            _endOffsetUnit);
+    }
+
     public TagQueryWithDays WithDays(
         PlayerCalendar calendar)
     {
@@ -88,10 +115,10 @@ public sealed class TagQuery
 
     public static (TagQuery SearchTagQuery, TagQuery UpdateTagQuery) ParseSearchAndUpdate(string input)
     {
-        string cleanedInput = input.Trim();
-        if (!input.Contains(" -> "))
+        string cleanedInput = $" {input.Trim()} ";
+        if (!cleanedInput.Contains(" -> "))
         {
-            cleanedInput = " -> " + cleanedInput;
+            cleanedInput = $" {cleanedInput} -> ";
         }
 
         string[] parts = cleanedInput.Split(" -> ", StringSplitOptions.TrimEntries);
@@ -102,11 +129,36 @@ public sealed class TagQuery
         return (searchQuery, updateQuery);
     }
 
+    public static (TagQuery SearchTagQuery, TagQuery FilterTagQuery) ParseSearchPlacesAndFilterTags(string input)
+    {
+        string cleanedInput = $" {input.Trim()} ";
+        if (!cleanedInput.Contains(" -> "))
+        {
+            cleanedInput = $" -> {cleanedInput}";
+        }
+
+        string[] parts = cleanedInput.Split(" -> ", StringSplitOptions.TrimEntries);
+
+        TagQuery searchQuery = Parse(parts[0]);
+        TagQuery filterQuery = Parse(parts[1]);
+
+        return (searchQuery, filterQuery);
+    }
+
     public static TagQuery Parse(string input)
     {
         if (string.IsNullOrEmpty(input))
         {
-            return new([], [], [], [], [], 0, PeriodUnit.Day, 0, PeriodUnit.Day);
+            return new(
+                [],
+                [],
+                [],
+                [],
+                [TagName.Excluded, TagName.Hidden, TagName.Ignored],
+                0,
+                PeriodUnit.Day,
+                0,
+                PeriodUnit.Day);
         }
 
         HashSet<TagName> includedTagNames = [];
@@ -173,61 +225,58 @@ public sealed class TagQuery
             if (match.Groups["Tag"].Success)
             {
                 string tag = match.Groups["Tag"].Value;
-                bool pattern = TagPattern.IsPattern(tag);
-                bool wildcardPattern = pattern && TagPattern.IsWildcardPattern(tag);
+                TagPatternType tagPatternType = TagPattern.DetectPatternType(tag);
 
-                tag = tag switch
+                if (tagPatternType == TagPatternType.None)
                 {
-                    _ when pattern => TagPattern.Unquote(tag),
-                    _ when TagName.IsName(tag) => TagName.Unquote(tag),
-                    _ => tag,
-                };
+                    tag = TagName.Unquote(tag);
+                }
+                else
+                {
+                    tag = TagPattern.Unquote(tag);
+                }
 
                 if (sign == "-")
                 {
-                    if (pattern && !wildcardPattern)
+                    if (tagPatternType == TagPatternType.None)
                     {
-                        pattern = false;
-                        tag = tag.Replace(@"\\", @"\").Replace(@"\?", @"?").Replace(@"\*", @"*");
-                    }
-
-                    if (pattern)
-                    {
-                        excludedTagPatterns.Add(new TagPattern(tag));
+                        excludedTagNames.Add(new TagName(tag));
                     }
                     else
                     {
-                        excludedTagNames.Add(new TagName(tag));
+                        excludedTagPatterns.Add(new TagPattern(tagPatternType, tag));
                     }
                 }
                 else
                 {
-                    if (pattern)
+                    if (tagPatternType == TagPatternType.None)
                     {
-                        includedTagPatterns.Add(new TagPattern(tag));
+                        includedTagNames.Add(new TagName(tag));
                     }
                     else
                     {
-                        includedTagNames.Add(new TagName(tag));
+                        includedTagPatterns.Add(new TagPattern(tagPatternType, tag));
                     }
                 }
             }
         }
 
-        if (!includedTagNames.Contains(TagName.Excluded) && !includedTagNames.Contains(TagName.Hidden) && !includedTagNames.Contains(TagName.Ignored))
-        {
-            additionalExcludedTagNames = [TagName.Excluded, TagName.Hidden, TagName.Ignored];
-        }
-
-        return new(
+        TagQuery tagQuery = new(
             includedTagNames,
             includedTagPatterns,
             excludedTagNames,
             excludedTagPatterns,
-            additionalExcludedTagNames,
+            [],
             startOffset,
             startOffsetUnit,
             endOffset,
             endOffsetUnit);
+
+        if (!tagQuery.TestTag(TagName.Excluded) && !tagQuery.TestTag(TagName.Hidden) && !tagQuery.TestTag(TagName.Ignored))
+        {
+            tagQuery = tagQuery.WithAdditionalExcludedNames([TagName.Excluded, TagName.Hidden, TagName.Ignored]);
+        }
+
+        return tagQuery;
     }
 }

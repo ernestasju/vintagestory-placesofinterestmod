@@ -54,7 +54,7 @@ public sealed class TagQueryWithDays
             includedTagNames.ToHashSet(),
             [],
             excludedTagNames.ToHashSet(),
-            replace ? [new TagPattern("*")] : [],
+            replace ? [new TagPattern(TagPatternType.Wildcard, "*")] : [],
             [],
             day,
             startDay,
