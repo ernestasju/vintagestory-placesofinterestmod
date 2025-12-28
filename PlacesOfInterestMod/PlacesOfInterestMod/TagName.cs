@@ -33,7 +33,7 @@ public sealed class TagName : IEquatable<TagName?>
 
     public override string ToString()
     {
-        if (TagPattern.DetectPatternType(_value) != TagPatternType.None)
+        if (TagPattern.LooksLikePattern(_value))
         {
             return $@"""{_value}""";
         }
@@ -48,12 +48,38 @@ public sealed class TagName : IEquatable<TagName?>
 
     public bool Equals(TagName? other)
     {
-        return other is not null && _value == other._value;
+        if (other is null)
+        {
+            return false;
+        }
+
+        if (IsExcluded() && other.IsExcluded())
+        {
+            return true;
+        }
+
+        return _value.Equals(other._value, StringComparison.OrdinalIgnoreCase);
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(_value);
+        // NOTE: We want excluded/hidden/ignored to be treated as the same value.
+        // NOTE: For example, HashSet.Contains will first call GetHashCode to test if values are possibly equal and
+        // NOTE: immediately return false if hash codes are different.
+        if (IsExcluded())
+        {
+            return HashCode.Combine(Excluded.Value);
+        }
+
+        return HashCode.Combine(_value.ToLowerInvariant());
+    }
+
+    public bool IsExcluded()
+    {
+        return
+            _value.Equals(Excluded.Value, StringComparison.OrdinalIgnoreCase) ||
+            _value.Equals(Hidden.Value, StringComparison.OrdinalIgnoreCase) ||
+            _value.Equals(Ignored.Value, StringComparison.OrdinalIgnoreCase);
     }
 
     public bool Matches(TagPattern tagPattern)

@@ -9,7 +9,7 @@ public static class StringExtensions
     {
         try
         {
-            _ = new Regex(value);
+            Regex.IsMatch("", value);
             return true;
         }
         catch (ArgumentException)

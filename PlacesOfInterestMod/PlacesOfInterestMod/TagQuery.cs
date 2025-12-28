@@ -65,20 +65,6 @@ public sealed class TagQuery
                 _additionalExcludedTagNames.Contains(tagName));
     }
 
-    public TagQuery WithAdditionalExcludedNames(IEnumerable<TagName> tagNames)
-    {
-        return new(
-            _includedTagNames,
-            _includedTagPatterns,
-            _excludedTagNames,
-            _excludedTagPatterns,
-            _additionalExcludedTagNames.Union(tagNames).ToHashSet(),
-            _startOffset,
-            _startOffsetUnit,
-            _endOffset,
-            _endOffsetUnit);
-    }
-
     public TagQueryWithDays WithDays(
         PlayerCalendar calendar)
     {
@@ -261,22 +247,20 @@ public sealed class TagQuery
             }
         }
 
-        TagQuery tagQuery = new(
+        if (!includedTagNames.Contains(TagName.Excluded) && !includedTagNames.Contains(TagName.Hidden) && !includedTagNames.Contains(TagName.Ignored))
+        {
+            additionalExcludedTagNames = [..additionalExcludedTagNames, TagName.Excluded, TagName.Hidden, TagName.Ignored];
+        }
+
+        return new(
             includedTagNames,
             includedTagPatterns,
             excludedTagNames,
             excludedTagPatterns,
-            [],
+            additionalExcludedTagNames,
             startOffset,
             startOffsetUnit,
             endOffset,
             endOffsetUnit);
-
-        if (!tagQuery.TestTag(TagName.Excluded) && !tagQuery.TestTag(TagName.Hidden) && !tagQuery.TestTag(TagName.Ignored))
-        {
-            tagQuery = tagQuery.WithAdditionalExcludedNames([TagName.Excluded, TagName.Hidden, TagName.Ignored]);
-        }
-
-        return tagQuery;
     }
 }

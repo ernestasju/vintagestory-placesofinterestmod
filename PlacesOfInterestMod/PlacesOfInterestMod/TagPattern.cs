@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using Vintagestory.Client.NoObf;
 
 namespace PlacesOfInterestMod;
 
@@ -66,9 +65,9 @@ public sealed class TagPattern : IEquatable<TagPattern?>
                     "^" +
                     Regex
                         .Escape(_value)
+                        .Replace(@"\\\\", @"[\\]")
                         .Replace(@"\\\*", @"[*]")
                         .Replace(@"\\\?", @"[?]")
-                        .Replace(@"\\\\", @"[\\]")
                         .Replace(@"\*", @".*")
                         .Replace(@"\?", @".") +
                     "$";
@@ -100,9 +99,14 @@ public sealed class TagPattern : IEquatable<TagPattern?>
         {
             _ when Regex.IsMatch(input, @"^~(?:\\\*|\\\?|\\\\|[^*?\\])*[*?]") => TagPatternType.Wildcard,
             _ when input.StartsWith('~') => TagPatternType.Constant,
-            _ when input.StartsWith('/') && input.EndsWith('/') && input.IsValidRegexPattern() => TagPatternType.Regex,
+            _ when input.StartsWith('/') && input.EndsWith('/') && input[1..^1].IsValidRegexPattern() => TagPatternType.Regex,
             _ => TagPatternType.None,
         };
+    }
+
+    public static bool LooksLikePattern(string input)
+    {
+        return DetectPatternType(input) != TagPatternType.None || (input.StartsWith('/') && input.EndsWith('/'));
     }
 
     public static string Unquote(string input)
