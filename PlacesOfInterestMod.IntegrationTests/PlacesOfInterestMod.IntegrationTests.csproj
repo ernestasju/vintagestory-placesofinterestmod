@@ -15,4 +15,8 @@
     <PackageReference Include="FluentAssertions" Version="8.8.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\PlacesOfInterestMod\PlacesOfInterestMod\PlacesOfInterestMod.csproj" />
+  </ItemGroup>
+
 </Project>

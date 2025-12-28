@@ -1,0 +1,304 @@
+// TESTS FOR HandleCommandTagInterestingPlace
+// ==========================================
+// 
+// To use these tests, ensure the VINTAGE_STORY environment variable is set to your Vintage Story installation directory.
+// Then add this file to PlacesOfInterestMod.IntegrationTests project.
+//
+// This file contains comprehensive tests for ServerChatCommands.HandleCommandTagInterestingPlace method.
+// Tests cover all behavior scenarios mentioned:
+// - call no tag with no parameters
+// - a random tag (using single letter)
+// - exclude a random tag (prefix with "-")
+// - include and exclude the same random tag
+// - include and exclude different random tags
+// - additional scenarios for multiple tags and existing places
+//
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using FluentAssertions;
+using Moq;
+using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
+using Xunit;
+using PlacesOfInterestMod;
+
+namespace PlacesOfInterestMod.IntegrationTests
+{
+    /// <summary>
+    /// Integration tests for ServerChatCommands.HandleCommandTagInterestingPlace method.
+    /// Tests verify the /tag command behavior when called on new places and existing places.
+    /// </summary>
+    public class HandleCommandTagInterestingPlace_Tests
+    {
+        private readonly ServerChatCommands _sut = new();
+
+        [Fact]
+        public void NoTagsWithNoParameters_ReturnsNothingToAdd()
+        {
+            // Arrange - no existing places, empty tag query
+            var (poi, _) = CreateTestPoiWithPlaces([]);
+            var tagQuery = TagQuery.Parse("");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            poi.Places.All.ToList().Should().HaveCount(0);
+        }
+
+        [Fact]
+        public void NewPlaceWithSingleTag_AddsPlaceWithTag()
+        {
+            // Arrange - no existing places, single tag "x"
+            var (poi, _) = CreateTestPoiWithPlaces([]);
+            var tagQuery = TagQuery.Parse("x");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            var places = poi.Places.All.ToList();
+            places.Should().HaveCount(1);
+            places[0].Tags.Should().HaveCount(1);
+            places[0].Tags[0].Name.Value.Should().Be("x");
+        }
+
+        [Fact]
+        public void NewPlaceWithExcludedTag_DoesNotAddPlace()
+        {
+            // Arrange - no existing places, excluded tag "-x"
+            var (poi, _) = CreateTestPoiWithPlaces([]);
+            var tagQuery = TagQuery.Parse("-x");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            poi.Places.All.ToList().Should().HaveCount(0);
+        }
+
+        [Fact]
+        public void ExistingPlaceIncludeAndExcludeSameTag_RemovesTagFromPlace()
+        {
+            // Arrange - place with tag "x" exists at player position, command includes "x" and excludes "x"
+            var playerPos = new Vec3d(0, 0, 0);
+            var place = new Place
+            {
+                XYZ = playerPos,
+                Tags = [new() { Name = new TagName("x"), StartDay = 0, EndDay = 0 }]
+            };
+            var (poi, _) = CreateTestPoiWithPlaces([place], playerPos);
+            var tagQuery = TagQuery.Parse("x -x");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            poi.Places.All.ToList().Should().HaveCount(0, "place should be deleted when all tags are removed");
+        }
+
+        [Fact]
+        public void ExistingPlaceIncludeAndExcludeDifferentTags_ChangesPlaceTags()
+        {
+            // Arrange - place with tag "x" exists, command includes "y" and excludes "x"
+            var playerPos = new Vec3d(0, 0, 0);
+            var place = new Place
+            {
+                XYZ = playerPos,
+                Tags = [new() { Name = new TagName("x"), StartDay = 0, EndDay = 0 }]
+            };
+            var (poi, _) = CreateTestPoiWithPlaces([place], playerPos);
+            var tagQuery = TagQuery.Parse("y -x");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            var places = poi.Places.All.ToList();
+            places.Should().HaveCount(1);
+            places[0].Tags.Should().HaveCount(1);
+            places[0].Tags[0].Name.Value.Should().Be("y");
+        }
+
+        [Fact]
+        public void NewPlaceWithMultipleTags_AddsPlaceWithAllTags()
+        {
+            // Arrange - no existing places, command includes multiple tags "x y z"
+            var (poi, _) = CreateTestPoiWithPlaces([]);
+            var tagQuery = TagQuery.Parse("x y z");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            var places = poi.Places.All.ToList();
+            places.Should().HaveCount(1);
+            places[0].Tags.Should().HaveCount(3);
+            var tagNames = places[0].Tags.Select(t => t.Name.Value).OrderBy(n => n).ToList();
+            tagNames.Should().Equal(["x", "y", "z"]);
+        }
+
+        [Fact]
+        public void ExistingPlaceAddTag_UpdatesPlaceWithAdditionalTag()
+        {
+            // Arrange - place with tag "x" exists, command includes "y"
+            var playerPos = new Vec3d(0, 0, 0);
+            var place = new Place
+            {
+                XYZ = playerPos,
+                Tags = [new() { Name = new TagName("x"), StartDay = 0, EndDay = 0 }]
+            };
+            var (poi, _) = CreateTestPoiWithPlaces([place], playerPos);
+            var tagQuery = TagQuery.Parse("y");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            var places = poi.Places.All.ToList();
+            places.Should().HaveCount(1);
+            places[0].Tags.Should().HaveCount(2);
+            var tagNames = places[0].Tags.Select(t => t.Name.Value).OrderBy(n => n).ToList();
+            tagNames.Should().Equal(["x", "y"]);
+        }
+
+        [Fact]
+        public void ExistingPlaceRemoveAllTags_DeletesPlace()
+        {
+            // Arrange - place with tag "x" exists, command excludes "x"
+            var playerPos = new Vec3d(0, 0, 0);
+            var place = new Place
+            {
+                XYZ = playerPos,
+                Tags = [new() { Name = new TagName("x"), StartDay = 0, EndDay = 0 }]
+            };
+            var (poi, _) = CreateTestPoiWithPlaces([place], playerPos);
+            var tagQuery = TagQuery.Parse("-x");
+
+            // Act
+            var result = _sut.HandleCommandTagInterestingPlace(poi, tagQuery);
+
+            // Assert
+            result.Should().NotBeNull();
+            poi.Places.All.ToList().Should().HaveCount(0, "place should be deleted when all tags are removed");
+        }
+
+        #region Test Helpers
+
+        private (PlayerPlacesOfInterest, TestWorldDataStorage) CreateTestPoiWithPlaces(
+            List<Place> initialPlaces,
+            Vec3d? playerPos = null)
+        {
+            playerPos ??= new Vec3d(100, 100, 100);
+            var storage = new TestWorldDataStorage();
+            storage.StorePlaces(initialPlaces);
+
+            var mockWorldData = CreateMockWorldData(storage);
+            var mockEntity = CreateMockEntity(playerPos.Value);
+            var mockPlayer = CreateMockPlayer(mockWorldData, mockEntity);
+
+            return (new PlayerPlacesOfInterest(mockPlayer), storage);
+        }
+
+        private static IWorldData CreateMockWorldData(TestWorldDataStorage storage)
+        {
+            var mock = new Mock<IWorldData>();
+
+            mock
+                .Setup(wd => wd.GetModData<List<ProtoPlace>>(It.IsAny<string>(), It.IsAny<List<ProtoPlace>>()))
+                .Returns((string _, List<ProtoPlace> defaultValue) =>
+                {
+                    var stored = storage.GetPlaces();
+                    return stored.Count > 0 ? stored : defaultValue;
+                });
+
+            mock
+                .Setup(wd => wd.SetModData(It.IsAny<string>(), It.IsAny<object>()))
+                .Callback((string _, object value) =>
+                {
+                    if (value is List<ProtoPlace> protoPlaces)
+                    {
+                        var converted = protoPlaces.SelectNonNulls(x => (Place?)x).ToList();
+                        storage.StorePlaces(converted);
+                    }
+                });
+
+            mock
+                .Setup(wd => wd.RemoveModdata(It.IsAny<string>()))
+                .Callback(() => storage.ClearPlaces());
+
+            return mock.Object;
+        }
+
+        private static Entity CreateMockEntity(Vec3d pos)
+        {
+            var mock = new Mock<Entity>();
+            
+            var entityPosMock = new Mock<EntityPos>();
+            entityPosMock.Setup(p => p.X).Returns(pos.X);
+            entityPosMock.Setup(p => p.Y).Returns(pos.Y);
+            entityPosMock.Setup(p => p.Z).Returns(pos.Z);
+            
+            mock.Setup(e => e.Pos).Returns(entityPosMock.Object);
+            mock.Setup(e => e.World).Returns(CreateMockWorld());
+
+            return mock.Object;
+        }
+
+        private static IPlayer CreateMockPlayer(IWorldData worldData, Entity entity)
+        {
+            var mock = new Mock<IPlayer>();
+            mock.Setup(p => p.WorldData).Returns(worldData);
+            mock.Setup(p => p.Entity).Returns(entity);
+            return mock.Object;
+        }
+
+        private static IWorldAccessor CreateMockWorld()
+        {
+            var calendarMock = new Mock<ICalendar>();
+            calendarMock.Setup(c => c.TotalDays).Returns(100d);
+            calendarMock.Setup(c => c.DaysPerMonth).Returns(30);
+            calendarMock.Setup(c => c.DaysPerYear).Returns(360);
+
+            var worldMock = new Mock<IWorldAccessor>();
+            worldMock.Setup(w => w.Calendar).Returns(calendarMock.Object);
+
+            return worldMock.Object;
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Test helper to store and retrieve places without directly using Vintage Story's data storage.
+    /// Simulates the behavior of IWorldData for testing purposes.
+    /// </summary>
+    public class TestWorldDataStorage
+    {
+        private List<ProtoPlace> _stored = [];
+
+        public void StorePlaces(IEnumerable<Place> places)
+        {
+            _stored = places.Select(p => (ProtoPlace)p).ToList();
+        }
+
+        public List<ProtoPlace> GetPlaces()
+        {
+            return _stored.ToList();
+        }
+
+        public void ClearPlaces()
+        {
+            _stored.Clear();
+        }
+    }
+}
