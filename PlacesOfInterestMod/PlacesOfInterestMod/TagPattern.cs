@@ -14,7 +14,8 @@ public sealed class TagPattern : IEquatable<TagPattern?>
         TagPatternType type,
         string value)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        ArgumentNullException.ThrowIfNull(value);
+
         _type = type;
         _value = value;
     }
@@ -77,15 +78,19 @@ public sealed class TagPattern : IEquatable<TagPattern?>
                     pattern,
                     RegexOptions.IgnoreCase);
             case TagPatternType.Regex:
-                return Regex.IsMatch(
-                    tagName.Value,
-                    _value,
-                    RegexOptions.IgnoreCase);
-            case TagPatternType.Constant:
-                return string.Equals(
-                    tagName.Value,
-                    _value,
-                    StringComparison.OrdinalIgnoreCase);
+                try
+                {
+                    return Regex.IsMatch(
+                        tagName.Value,
+                        _value,
+                        RegexOptions.IgnoreCase);
+                }
+                catch (ArgumentException)
+                {
+                    // NOTE: Invalid regex pattern.
+                }
+
+                return false;
             case TagPatternType.None:
                 return false;
             default:
@@ -97,16 +102,15 @@ public sealed class TagPattern : IEquatable<TagPattern?>
     {
         return input switch
         {
-            _ when Regex.IsMatch(input, @"^~(?:\\\*|\\\?|\\\\|[^*?\\])*[*?]") => TagPatternType.Wildcard,
-            _ when input.StartsWith('~') => TagPatternType.Constant,
-            _ when input.StartsWith('/') && input.EndsWith('/') && input[1..^1].IsValidRegexPattern() => TagPatternType.Regex,
+            _ when input.StartsWith('~') => TagPatternType.Wildcard,
+            _ when input.StartsWith('/') && input.EndsWith('/') => TagPatternType.Regex,
             _ => TagPatternType.None,
         };
     }
 
     public static bool LooksLikePattern(string input)
     {
-        return DetectPatternType(input) != TagPatternType.None || (input.StartsWith('/') && input.EndsWith('/'));
+        return DetectPatternType(input) != TagPatternType.None;
     }
 
     public static string Unquote(string input)
@@ -115,7 +119,6 @@ public sealed class TagPattern : IEquatable<TagPattern?>
         {
             TagPatternType.Wildcard => input[1..],
             TagPatternType.Regex => input[1..^1],
-            TagPatternType.Constant => input[1..],
             TagPatternType.None => input,
             _ => throw new UnreachableException("Unreachable due to exhaustive check."),
         };

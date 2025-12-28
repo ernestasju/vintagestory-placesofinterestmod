@@ -104,7 +104,7 @@ public sealed class TagQuery
         string cleanedInput = $" {input.Trim()} ";
         if (!cleanedInput.Contains(" -> "))
         {
-            cleanedInput = $" {cleanedInput} -> ";
+            cleanedInput = $" -> {cleanedInput}";
         }
 
         string[] parts = cleanedInput.Split(" -> ", StringSplitOptions.TrimEntries);
