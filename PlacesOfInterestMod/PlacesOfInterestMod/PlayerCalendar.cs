@@ -1,13 +1,10 @@
-﻿using System;
-using Vintagestory.API.Common;
-
-namespace PlacesOfInterestMod;
+﻿namespace PlacesOfInterestMod;
 
 public sealed class PlayerCalendar
 {
-    private readonly PlayerPlacesOfInterest _poi;
+    private readonly IPlayerPlacesOfInterest _poi;
 
-    public PlayerCalendar(PlayerPlacesOfInterest poi)
+    public PlayerCalendar(IPlayerPlacesOfInterest poi)
     {
         _poi = poi;
     }

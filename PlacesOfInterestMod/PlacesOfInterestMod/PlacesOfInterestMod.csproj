@@ -1,82 +1,83 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath>bin\$(Configuration)\Mods\mod</OutputPath>
-    <Nullable>enable</Nullable>
-	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<OutputPath>bin\$(Configuration)\Mods\mod</OutputPath>
+		<Nullable>enable</Nullable>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Reference Include="VintagestoryAPI">
-      <HintPath>$(VINTAGE_STORY)/VintagestoryAPI.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="VSSurvivalMod">
-      <HintPath>$(VINTAGE_STORY)/Mods/VSSurvivalMod.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="VSEssentials">
-      <HintPath>$(VINTAGE_STORY)/Mods/VSEssentials.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="VSCreativeMod">
-      <HintPath>$(VINTAGE_STORY)/Mods/VSCreativeMod.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>$(VINTAGE_STORY)/Lib/Newtonsoft.Json.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="0Harmony">
-      <HintPath>$(VINTAGE_STORY)/Lib/0Harmony.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="VintagestoryLib">
-      <HintPath>$(VINTAGE_STORY)/VintagestoryLib.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="protobuf-net">
-      <HintPath>$(VINTAGE_STORY)/Lib/protobuf-net.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="cairo-sharp">
-      <HintPath>$(VINTAGE_STORY)/Lib/cairo-sharp.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Data.Sqlite">
-      <HintPath>$(VINTAGE_STORY)/Lib/Microsoft.Data.Sqlite.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
+	<ItemGroup>
+		<Reference Include="VintagestoryAPI">
+			<HintPath>$(VINTAGE_STORY)/VintagestoryAPI.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="VSSurvivalMod">
+			<HintPath>$(VINTAGE_STORY)/Mods/VSSurvivalMod.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="VSEssentials">
+			<HintPath>$(VINTAGE_STORY)/Mods/VSEssentials.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="VSCreativeMod">
+			<HintPath>$(VINTAGE_STORY)/Mods/VSCreativeMod.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="Newtonsoft.Json">
+			<HintPath>$(VINTAGE_STORY)/Lib/Newtonsoft.Json.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="0Harmony">
+			<HintPath>$(VINTAGE_STORY)/Lib/0Harmony.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="VintagestoryLib">
+			<HintPath>$(VINTAGE_STORY)/VintagestoryLib.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="protobuf-net">
+			<HintPath>$(VINTAGE_STORY)/Lib/protobuf-net.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="cairo-sharp">
+			<HintPath>$(VINTAGE_STORY)/Lib/cairo-sharp.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="Microsoft.Data.Sqlite">
+			<HintPath>$(VINTAGE_STORY)/Lib/Microsoft.Data.Sqlite.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+	</ItemGroup>
 
-<ItemGroup>
-  <Content Include="modinfo.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </Content>
-</ItemGroup>
+	<ItemGroup>
+		<Content Include="modinfo.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 
-<ItemGroup>
-  <Content Include="modicon.png" Condition="Exists('modicon.png')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </Content>
-</ItemGroup>
+	<ItemGroup>
+		<Content Include="modicon.png" Condition="Exists('modicon.png')">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 
-<ItemGroup>
-  <PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
-    <PrivateAssets>all</PrivateAssets>
-    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  </PackageReference>
-  <PackageReference Include="SonarAnalyzer.CSharp.Styling" Version="10.15.0.120848">
-    <PrivateAssets>all</PrivateAssets>
-    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  </PackageReference>
-  <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-    <PrivateAssets>all</PrivateAssets>
-    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  </PackageReference>
-  <PackageReference Include="System.ValueTuple" Version="4.6.1" />
-</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="SonarAnalyzer.CSharp.Styling" Version="10.15.0.120848">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="SumSharp" Version="2.3.0" />
+		<PackageReference Include="System.ValueTuple" Version="4.6.1" />
+	</ItemGroup>
 
 </Project>

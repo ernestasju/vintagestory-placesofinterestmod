@@ -17,7 +17,7 @@ public static class ServerChatCommands
             .RequiresPrivilege(Privilege.chat)
             .WithDescription(Lang.Get("places-of-interest-mod:clearInterestingPlacesCommandDescription"))
             .HandleWith(
-                (TextCommandCallingArgs args) =>
+                TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     PlayerPlacesOfInterest poi = new(args.Caller.Player);
                     return HandleCommandClearInterestingPlaces(poi);
@@ -35,7 +35,7 @@ public static class ServerChatCommands
             .WithArgs(
                 serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
-                (TextCommandCallingArgs args) =>
+                TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     PlayerPlacesOfInterest poi = new(args.Caller.Player);
                     TagQuery tagQuery = TagQuery.Parse(args.LastArg?.ToString() ?? "");
@@ -51,7 +51,7 @@ public static class ServerChatCommands
             .WithArgs(
                 serverApi.ChatCommands.Parsers.All("tags"))
             .HandleWith(
-                (TextCommandCallingArgs args) =>
+                TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     PlayerPlacesOfInterest poi = new(args.Caller.Player);
                     TagQuery tagQuery = TagQuery.Parse(args.LastArg?.ToString() ?? "");
@@ -68,7 +68,7 @@ public static class ServerChatCommands
                 serverApi.ChatCommands.Parsers.OptionalInt("radius", 100),
                 serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
-                (TextCommandCallingArgs args) =>
+                TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     // NOTE: Arg is guaranteed to exist.
                     int searchRadius = (int)args[0];
@@ -96,7 +96,7 @@ public static class ServerChatCommands
                 serverApi.ChatCommands.Parsers.OptionalInt("radius", 16),
                 serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
-                (TextCommandCallingArgs args) =>
+                TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     // NOTE: Arg is guaranteed to exist.
                     int searchRadius = (int)args[0];
@@ -124,30 +124,28 @@ public static class ServerChatCommands
         //          });
     }
 
-    public static TextCommandResult HandleCommandClearInterestingPlaces(PlayerPlacesOfInterest poi)
+    public static LocalizedTextCommandResult HandleCommandClearInterestingPlaces(
+        IPlayerPlacesOfInterest poi)
     {
         poi.Places.Clear();
 
-        return TextCommandResult.Success(
-            Lang.Get("places-of-interest-mod:clearedInterestingPlaces"));
+        return LocalizedTextCommandResult.Success(new("places-of-interest-mod:clearedInterestingPlaces"));
     }
 
-    public static TextCommandResult HandleCommandTagInterestingPlace(
-        PlayerPlacesOfInterest poi,
+    public static LocalizedTextCommandResult HandleCommandTagInterestingPlace(
+        IPlayerPlacesOfInterest poi,
         TagQuery tagQuery)
     {
         Places placesCloseToPlayer = poi.Places.All.AtPlayerPosition();
 
         if (placesCloseToPlayer.Count == 0 && !tagQuery.IncludedTagNames.Any())
         {
-            return TextCommandResult.Success(
-                Lang.Get("places-of-interest-mod:interestingCommandResultNothingToAdd"));
+            return LocalizedTextCommandResult.Success(new("places-of-interest-mod:interestingCommandResultNothingToAdd"));
         }
 
         if (placesCloseToPlayer.Count > 0 && !tagQuery.IncludedTagNames.Any() && !tagQuery.ExcludedTagNames.Any() && !tagQuery.ExcludedTagPatterns.Any())
         {
-            return TextCommandResult.Success(
-                Lang.Get("places-of-interest-mod:interestingCommandResultNothingToAddChangeOrRemove"));
+            return LocalizedTextCommandResult.Success(new("places-of-interest-mod:interestingCommandResultNothingToAddChangeOrRemove"));
         }
 
         placesCloseToPlayer.Update(
@@ -164,54 +162,50 @@ public static class ServerChatCommands
 
         if (placesCloseToPlayer.Count == 0)
         {
-            return TextCommandResult.Success(
-                Lang.Get(
-                    "places-of-interest-mod:interestingCommandResult",
-                    Chat.FormTagsText(tagQuery.IncludedTagNames, [], [], [])));
+            return LocalizedTextCommandResult.Success(new(
+                "places-of-interest-mod:interestingCommandResult",
+                Chat.FormTagsText(tagQuery.IncludedTagNames, [], [], [])));
         }
         else
         {
-            return TextCommandResult.Success(
-                Lang.Get(
-                    "places-of-interest-mod:interestingCommandResultUpdated",
-                    Chat.FormTagsText(
-                        tagQuery.IncludedTagNames,
-                        [],
-                        tagQuery.ExcludedTagNames,
-                        tagQuery.ExcludedTagPatterns)));
+            return LocalizedTextCommandResult.Success(new(
+                "places-of-interest-mod:interestingCommandResultUpdated",
+                Chat.FormTagsText(
+                    tagQuery.IncludedTagNames,
+                    [],
+                    tagQuery.ExcludedTagNames,
+                    tagQuery.ExcludedTagPatterns)));
         }
     }
 
-    public static TextCommandResult HandleCommandFindInterestingPlace(
-        PlayerPlacesOfInterest poi,
+    public static LocalizedTextCommandResult HandleCommandFindInterestingPlace(
+        IPlayerPlacesOfInterest poi,
         TagQuery tagQuery)
     {
         Places matchingPlaces = poi.Places.All.Where(tagQuery);
 
         if (matchingPlaces.Count == 0)
         {
-            return TextCommandResult.Success(
-                Lang.Get(
-                    "places-of-interest-mod:noMatchingPlacesFound",
-                    Chat.FormTagsText(
-                        tagQuery.IncludedTagNames,
-                        tagQuery.IncludedTagPatterns,
-                        tagQuery.ExcludedTagNames,
-                        tagQuery.ExcludedTagPatterns)));
+            return LocalizedTextCommandResult.Success(new(
+                "places-of-interest-mod:noMatchingPlacesFound",
+                Chat.FormTagsText(
+                    tagQuery.IncludedTagNames,
+                    tagQuery.IncludedTagPatterns,
+                    tagQuery.ExcludedTagNames,
+                    tagQuery.ExcludedTagPatterns)));
         }
 
         Place nearestPlace = matchingPlaces.FindNearestPlace();
 
-        return TextCommandResult.Success(
-            Lang.Get(
-                "places-of-interest-mod:foundNearestPlace",
-                Chat.FormTagsText(nearestPlace.CalculateActiveTagNames(poi.Calendar.Today), [], [], []),
-                (int)Math.Round(poi.Places.CalculateHorizontalDistance(nearestPlace)),
-                (int)Math.Round(poi.Places.CalculateVerticalDistance(nearestPlace))));
+        return LocalizedTextCommandResult.Success(new(
+            "places-of-interest-mod:foundNearestPlace",
+            Chat.FormTagsText(nearestPlace.CalculateActiveTagNames(poi.Calendar.Today), [], [], []),
+            (int)Math.Round(poi.Places.CalculateHorizontalDistance(nearestPlace)),
+            (int)Math.Round(poi.Places.CalculateVerticalDistance(nearestPlace))));
     }
 
-    public static TextCommandResult HandleCommandFindTagsAroundPlayer(
-        PlayerPlacesOfInterest poi,
+    public static LocalizedTextCommandResult HandleCommandFindTagsAroundPlayer(
+        IPlayerPlacesOfInterest poi,
         int searchRadius,
         TagQuery searchTagQuery,
         TagQuery filterTagQuery)
@@ -226,18 +220,16 @@ public static class ServerChatCommands
 
         if (uniqueTags.Count == 0)
         {
-            return TextCommandResult.Success(
-                Lang.Get("places-of-interest-mod:noInterestingTagsFound"));
+            return LocalizedTextCommandResult.Success(new("places-of-interest-mod:noInterestingTagsFound"));
         }
 
-        return TextCommandResult.Success(
-            Lang.Get(
-                "places-of-interest-mod:whatsSoInterestingResult",
-                Chat.FormTagsText(uniqueTags, [], [], [])));
+        return LocalizedTextCommandResult.Success(new(
+            "places-of-interest-mod:whatsSoInterestingResult",
+            Chat.FormTagsText(uniqueTags, [], [], [])));
     }
 
-    public static TextCommandResult HandleCommandEditPlaces(
-        PlayerPlacesOfInterest poi,
+    public static LocalizedTextCommandResult HandleCommandEditPlaces(
+        IPlayerPlacesOfInterest poi,
         int searchRadius,
         TagQuery searchTagQuery,
         TagQuery updateTagQuery)
@@ -246,15 +238,14 @@ public static class ServerChatCommands
 
         if (placesCloseToPlayer.Count == 0)
         {
-            return TextCommandResult.Success(
-                Lang.Get(
-                    "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
-                    searchRadius,
-                    Chat.FormTagsText(
-                        searchTagQuery.IncludedTagNames,
-                        searchTagQuery.IncludedTagPatterns,
-                        searchTagQuery.ExcludedTagNames,
-                        searchTagQuery.ExcludedTagPatterns)));
+            return LocalizedTextCommandResult.Success(new(
+                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
+                searchRadius,
+                Chat.FormTagsText(
+                    searchTagQuery.IncludedTagNames,
+                    searchTagQuery.IncludedTagPatterns,
+                    searchTagQuery.ExcludedTagNames,
+                    searchTagQuery.ExcludedTagPatterns)));
         }
 
         Places matchingPlaces = placesCloseToPlayer.Where(searchTagQuery);
@@ -273,27 +264,25 @@ public static class ServerChatCommands
 
         if (matchingPlaces.Count == 0)
         {
-            return TextCommandResult.Success(
-                Lang.Get(
-                    "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
-                    searchRadius,
-                    Chat.FormTagsText(
-                        searchTagQuery.IncludedTagNames,
-                        searchTagQuery.IncludedTagPatterns,
-                        searchTagQuery.ExcludedTagNames,
-                        searchTagQuery.ExcludedTagPatterns)));
+            return LocalizedTextCommandResult.Success(new(
+                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
+                searchRadius,
+                Chat.FormTagsText(
+                    searchTagQuery.IncludedTagNames,
+                    searchTagQuery.IncludedTagPatterns,
+                    searchTagQuery.ExcludedTagNames,
+                    searchTagQuery.ExcludedTagPatterns)));
         }
 
-        return TextCommandResult.Success(
-            Lang.Get(
-                "places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces",
-                matchingPlaces.Count,
-                Chat.FormTagsText(
-                    updateTagQuery.IncludedTagNames,
-                    updateTagQuery.IncludedTagPatterns,
-                    updateTagQuery.ExcludedTagNames,
-                    updateTagQuery.ExcludedTagPatterns),
-                numberOfRemovedPlaces,
-                numberOfChangedPlaces));
+        return LocalizedTextCommandResult.Success(new(
+            "places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces",
+            matchingPlaces.Count,
+            Chat.FormTagsText(
+                updateTagQuery.IncludedTagNames,
+                updateTagQuery.IncludedTagPatterns,
+                updateTagQuery.ExcludedTagNames,
+                updateTagQuery.ExcludedTagPatterns),
+            numberOfRemovedPlaces,
+            numberOfChangedPlaces));
     }
 }

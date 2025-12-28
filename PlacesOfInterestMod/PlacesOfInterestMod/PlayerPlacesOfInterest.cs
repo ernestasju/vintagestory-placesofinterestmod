@@ -3,7 +3,7 @@ using Vintagestory.API.MathTools;
 
 namespace PlacesOfInterestMod;
 
-public sealed class PlayerPlacesOfInterest
+public sealed class PlayerPlacesOfInterest : IPlayerPlacesOfInterest
 {
     private readonly IPlayer _player;
     private PlayerPlaces? _places;
