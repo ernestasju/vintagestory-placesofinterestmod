@@ -7,8 +7,9 @@ namespace PlacesOfInterestMod;
 
 public sealed class PlayerPlaces
 {
+    public const int RoughPlaceResolution = 8;
+
     private const string _placesOfInterestModDataKey = "places-of-interest-mod:placesOfInterest";
-    private const int _roughPlaceResolution = 8;
     private const int _roughPlaceOffset = 4;
 
     private readonly PlayerPlacesOfInterest _poi;
@@ -26,7 +27,7 @@ public sealed class PlayerPlaces
 
     public static Vec3i ToRoughPlace(Vec3d position)
     {
-        return position.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset);
+        return position.ToRoughPlace(RoughPlaceResolution, _roughPlaceOffset);
     }
 
     public static PlayerPlaces Load(PlayerPlacesOfInterest poi)
@@ -79,7 +80,7 @@ public sealed class PlayerPlaces
         List<Place> newPlaces = places.ToList();
 
         ILookup<Vec3i, Place> newPlacesByRoughPlace = newPlaces
-            .ToLookup(x => x.XYZ.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset));
+            .ToLookup(x => x.XYZ.ToRoughPlace(RoughPlaceResolution, _roughPlaceOffset));
 
         foreach (IGrouping<Vec3i, Place> newPlaces2 in newPlacesByRoughPlace)
         {
