@@ -2,9 +2,9 @@
 
 public sealed class PlayerCalendar
 {
-    private readonly IPlayerPlacesOfInterest _poi;
+    private readonly PlayerPlacesOfInterest _poi;
 
-    public PlayerCalendar(IPlayerPlacesOfInterest poi)
+    public PlayerCalendar(PlayerPlacesOfInterest poi)
     {
         _poi = poi;
     }

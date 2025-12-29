@@ -11,16 +11,16 @@ public sealed class PlayerPlaces
     private const int _roughPlaceResolution = 8;
     private const int _roughPlaceOffset = 4;
 
-    private readonly IPlayerPlacesOfInterest _poi;
+    private readonly PlayerPlacesOfInterest _poi;
     private readonly List<Place> _places;
 
-    private PlayerPlaces(IPlayerPlacesOfInterest poi, IEnumerable<Place> places)
+    private PlayerPlaces(PlayerPlacesOfInterest poi, IEnumerable<Place> places)
     {
         _poi = poi;
         _places = places.ToList();
     }
 
-    public IPlayerPlacesOfInterest PoI => _poi;
+    public PlayerPlacesOfInterest PoI => _poi;
 
     public Places All => new(this, _places);
 
@@ -29,7 +29,7 @@ public sealed class PlayerPlaces
         return position.ToRoughPlace(_roughPlaceResolution, _roughPlaceOffset);
     }
 
-    public static PlayerPlaces Load(IPlayerPlacesOfInterest poi)
+    public static PlayerPlaces Load(PlayerPlacesOfInterest poi)
     {
         IEnumerable<Place> places;
         try

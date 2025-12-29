@@ -1,18 +1,12 @@
-﻿using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
+﻿using Vintagestory.API.MathTools;
 
 namespace PlacesOfInterestMod;
 
-public sealed class PlayerPlacesOfInterest : IPlayerPlacesOfInterest
+public sealed class PlayerPlacesOfInterest
 {
     private readonly IVintageStoryPlayer _player;
     private PlayerPlaces? _places;
     private PlayerCalendar? _calendar;
-
-    public PlayerPlacesOfInterest(IPlayer player)
-        : this(new VintageStoryPlayer(player))
-    {
-    }
 
     public PlayerPlacesOfInterest(IVintageStoryPlayer player)
     {

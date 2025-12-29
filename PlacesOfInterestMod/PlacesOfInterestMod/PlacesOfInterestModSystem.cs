@@ -57,7 +57,7 @@ public class PlacesOfInterestModSystem : ModSystem
         _serverNetworkChannel.SetMessageHandler(
             (IServerPlayer fromPlayer, LoadPlacesPacket packet) =>
             {
-                PlayerPlacesOfInterest poi = new(fromPlayer);
+                PlayerPlacesOfInterest poi = new(new VintageStoryPlayer(fromPlayer));
 
                 _serverNetworkChannel.SendPacket(
                     new LoadedPlacesPacket()
@@ -77,7 +77,7 @@ public class PlacesOfInterestModSystem : ModSystem
             {
                 List<Place> newPlaces = (packet.Places ?? []).SelectNonNulls(x => (Place?)x).ToList();
 
-                PlayerPlacesOfInterest poi = new(fromPlayer);
+                PlayerPlacesOfInterest poi = new(new VintageStoryPlayer(fromPlayer));
                 poi.Places.Import(newPlaces, packet.ExistingPlaceAction);
 
                 _serverNetworkChannel.SendPacket(
