@@ -34,13 +34,13 @@ public sealed class PlayerPlaces
         IEnumerable<Place> places;
         try
         {
-            places = poi
+            places = poi.Player
                 .LoadModData<List<ProtoPlace>>(_placesOfInterestModDataKey, [])
                 .SelectNonNulls(x => (Place?)x);
         }
         catch (ProtoException)
         {
-            places = poi
+            places = poi.Player
                 .LoadModData<List<OldProtoPlace>>(_placesOfInterestModDataKey, [])
                 .SelectNonNulls(x => (Place?)x);
         }
@@ -50,7 +50,7 @@ public sealed class PlayerPlaces
 
     public void Clear()
     {
-        _poi.RemoveModData(_placesOfInterestModDataKey);
+        _poi.Player.RemoveModData(_placesOfInterestModDataKey);
 
         _places.Clear();
     }
@@ -61,7 +61,7 @@ public sealed class PlayerPlaces
             .Select(x => (ProtoPlace)x)
             .ToList();
 
-        _poi.SaveModData(_placesOfInterestModDataKey, protoPlaces);
+        _poi.Player.SaveModData(_placesOfInterestModDataKey, protoPlaces);
     }
 
     public void Add(Place place)

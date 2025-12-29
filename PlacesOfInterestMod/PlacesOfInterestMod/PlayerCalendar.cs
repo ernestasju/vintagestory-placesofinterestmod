@@ -9,7 +9,7 @@ public sealed class PlayerCalendar
         _poi = poi;
     }
 
-    public int Today => (int)_poi.Player.Entity.World.Calendar.TotalDays;
+    public int Today => (int)_poi.Player.Calendar.TotalDays;
 
     public int CalculateDay(int offset, PeriodUnit unit)
     {
@@ -21,9 +21,9 @@ public sealed class PlayerCalendar
         return unit switch
         {
             PeriodUnit.Day => 1,
-            PeriodUnit.Month => _poi.Player.Entity.World.Calendar.DaysPerMonth,
-            PeriodUnit.Quarter => _poi.Player.Entity.World.Calendar.DaysPerMonth * 4,
-            PeriodUnit.Year => _poi.Player.Entity.World.Calendar.DaysPerYear,
+            PeriodUnit.Month => _poi.Player.Calendar.DaysPerMonth,
+            PeriodUnit.Quarter => _poi.Player.Calendar.DaysPerMonth * 4,
+            PeriodUnit.Year => _poi.Player.Calendar.DaysPerYear,
             PeriodUnit.ResinWeek => 7,
             _ => 0,
         };
