@@ -32,5 +32,6 @@
   "pasteInterestingPlacesCommandExample3": ".pasteInterestingPlaces replace # Will add new places and also replace existing places with tags from clipboard.",
   "pasteInterestingPlacesResultInvalidClipboard": "Cannot read places from clipboard.",
   "pasteInterestingPlacesResultUploadInProgress": "Uploading places to server.",
+  "pasteInterestingPlacesResultNoClipboard": "There there no valid places in clipboard.",
   "pasteInterestingPlacesResult": "Pasted {0} places from clipboard."
 }

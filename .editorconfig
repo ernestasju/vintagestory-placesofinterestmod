@@ -747,3 +747,7 @@ dotnet_diagnostic.T0003.severity = silent
 ### IDE0290: Use primary constructor.
 ### Primary constructor syntax is too cluttered when constructor has many parameters. Also the backing *variables* are not readonly.
 dotnet_diagnostic.IDE0290.severity = silent
+
+### SA1601: Describe partial classes
+### No. I don't think I will.
+dotnet_diagnostic.SA1601.severity = silent

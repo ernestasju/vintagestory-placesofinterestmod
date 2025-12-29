@@ -2,12 +2,14 @@
 
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<LangVersion>Latest</LangVersion>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>true</ImplicitUsings>
-		<LangVersion>Latest</LangVersion>
-		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+		<OutputItemType>Analyzer</OutputItemType>
 		<IsRoslynComponent>true</IsRoslynComponent>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -17,6 +19,7 @@
 	  </PackageReference>
 	  <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
 	  <PackageReference Include="System.Text.Json" Version="10.0.1" />
+	  <PackageReference Include="System.ValueTuple" Version="4.6.1" />
 	</ItemGroup>
 
 </Project>

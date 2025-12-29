@@ -15,7 +15,7 @@ public static class ServerChatCommands
             .WithName("clearInterestingPlaces")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:clearInterestingPlacesCommandDescription"))
+            .WithDescription(Lang.Get(LocalizedTexts.clearInterestingPlacesCommandDescription))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
@@ -28,10 +28,10 @@ public static class ServerChatCommands
             .WithAlias("tag")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:interestingCommandDescription"))
+            .WithDescription(Lang.Get(LocalizedTexts.interestingCommandDescription))
             .WithExamples(
-                Lang.Get("places-of-interest-mod:interestingCommandExample1"),
-                Lang.Get("places-of-interest-mod:interestingCommandExample2"))
+                Lang.Get(LocalizedTexts.interestingCommandExample1),
+                Lang.Get(LocalizedTexts.interestingCommandExample2))
             .WithArgs(
                 serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
@@ -47,7 +47,7 @@ public static class ServerChatCommands
             .WithAlias("dist")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:findInterestingPlaceCommandDescription"))
+            .WithDescription(Lang.Get(LocalizedTexts.findInterestingPlaceCommandDescription))
             .WithArgs(
                 serverApi.ChatCommands.Parsers.All("tags"))
             .HandleWith(
@@ -63,7 +63,7 @@ public static class ServerChatCommands
             .WithAlias("tags")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:whatsSoInterestingCommandDescription"))
+            .WithDescription(Lang.Get(LocalizedTexts.whatsSoInterestingCommandDescription))
             .WithArgs(
                 serverApi.ChatCommands.Parsers.OptionalInt("radius", 100),
                 serverApi.ChatCommands.Parsers.OptionalAll("tags"))
@@ -87,11 +87,11 @@ public static class ServerChatCommands
             .WithAlias("editTags")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:editInterestingPlacesCommandDescription"))
+            .WithDescription(Lang.Get(LocalizedTexts.editInterestingPlacesCommandDescription))
             .WithExamples(
-                Lang.Get("places-of-interest-mod:editInterestingPlacesCommandExample1"),
-                Lang.Get("places-of-interest-mod:editInterestingPlacesCommandExample2"),
-                Lang.Get("places-of-interest-mod:editInterestingPlacesCommandExample3"))
+                Lang.Get(LocalizedTexts.editInterestingPlacesCommandExample1),
+                Lang.Get(LocalizedTexts.editInterestingPlacesCommandExample2),
+                Lang.Get(LocalizedTexts.editInterestingPlacesCommandExample3))
             .WithArgs(
                 serverApi.ChatCommands.Parsers.OptionalInt("radius", 16),
                 serverApi.ChatCommands.Parsers.OptionalAll("tags"))
@@ -129,7 +129,7 @@ public static class ServerChatCommands
     {
         poi.Places.Clear();
 
-        return LocalizedTextCommandResult.Success(new("places-of-interest-mod:clearedInterestingPlaces"));
+        return LocalizedTextCommandResult.Success(new(LocalizedTexts.clearedInterestingPlaces));
     }
 
     public static LocalizedTextCommandResult HandleCommandTagInterestingPlace(
@@ -140,12 +140,12 @@ public static class ServerChatCommands
 
         if (placesCloseToPlayer.Count == 0 && !tagQuery.IncludedTagNames.Any())
         {
-            return LocalizedTextCommandResult.Success(new("places-of-interest-mod:interestingCommandResultNothingToAdd"));
+            return LocalizedTextCommandResult.Success(new(LocalizedTexts.interestingCommandResultNothingToAdd));
         }
 
         if (placesCloseToPlayer.Count > 0 && !tagQuery.IncludedTagNames.Any() && !tagQuery.ExcludedTagNames.Any() && !tagQuery.ExcludedTagPatterns.Any())
         {
-            return LocalizedTextCommandResult.Success(new("places-of-interest-mod:interestingCommandResultNothingToAddChangeOrRemove"));
+            return LocalizedTextCommandResult.Success(new(LocalizedTexts.interestingCommandResultNothingToAddChangeOrRemove));
         }
 
         placesCloseToPlayer.Update(
@@ -163,13 +163,13 @@ public static class ServerChatCommands
         if (placesCloseToPlayer.Count == 0)
         {
             return LocalizedTextCommandResult.Success(new(
-                "places-of-interest-mod:interestingCommandResult",
+                LocalizedTexts.interestingCommandResult,
                 Chat.FormTagsText(tagQuery.IncludedTagNames, [], [], [])));
         }
         else
         {
             return LocalizedTextCommandResult.Success(new(
-                "places-of-interest-mod:interestingCommandResultUpdated",
+                LocalizedTexts.interestingCommandResultUpdated,
                 Chat.FormTagsText(
                     tagQuery.IncludedTagNames,
                     [],
@@ -187,7 +187,7 @@ public static class ServerChatCommands
         if (matchingPlaces.Count == 0)
         {
             return LocalizedTextCommandResult.Success(new(
-                "places-of-interest-mod:noMatchingPlacesFound",
+                LocalizedTexts.noMatchingPlacesFound,
                 Chat.FormTagsText(
                     tagQuery.IncludedTagNames,
                     tagQuery.IncludedTagPatterns,
@@ -198,7 +198,7 @@ public static class ServerChatCommands
         Place nearestPlace = matchingPlaces.FindNearestPlace();
 
         return LocalizedTextCommandResult.Success(new(
-            "places-of-interest-mod:foundNearestPlace",
+            LocalizedTexts.foundNearestPlace,
             Chat.FormTagsText(nearestPlace.CalculateActiveTagNames(poi.Calendar.Today), [], [], []),
             (int)Math.Round(poi.Places.CalculateHorizontalDistance(nearestPlace)),
             (int)Math.Round(poi.Places.CalculateVerticalDistance(nearestPlace))));
@@ -220,11 +220,11 @@ public static class ServerChatCommands
 
         if (uniqueTags.Count == 0)
         {
-            return LocalizedTextCommandResult.Success(new("places-of-interest-mod:noInterestingTagsFound"));
+            return LocalizedTextCommandResult.Success(new(LocalizedTexts.noInterestingTagsFound));
         }
 
         return LocalizedTextCommandResult.Success(new(
-            "places-of-interest-mod:whatsSoInterestingResult",
+            LocalizedTexts.whatsSoInterestingResult,
             Chat.FormTagsText(uniqueTags, [], [], [])));
     }
 
@@ -239,7 +239,7 @@ public static class ServerChatCommands
         if (placesCloseToPlayer.Count == 0)
         {
             return LocalizedTextCommandResult.Success(new(
-                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
+                LocalizedTexts.editInterestingPlacesResultNoPlacesFound,
                 searchRadius,
                 Chat.FormTagsText(
                     searchTagQuery.IncludedTagNames,
@@ -265,7 +265,7 @@ public static class ServerChatCommands
         if (matchingPlaces.Count == 0)
         {
             return LocalizedTextCommandResult.Success(new(
-                "places-of-interest-mod:editInterestingPlacesResultNoPlacesFound",
+                LocalizedTexts.editInterestingPlacesResultNoPlacesFound,
                 searchRadius,
                 Chat.FormTagsText(
                     searchTagQuery.IncludedTagNames,
@@ -275,7 +275,7 @@ public static class ServerChatCommands
         }
 
         return LocalizedTextCommandResult.Success(new(
-            "places-of-interest-mod:editInterestingPlacesResultUpdatedPlaces",
+            LocalizedTexts.editInterestingPlacesResultUpdatedPlaces,
             matchingPlaces.Count,
             Chat.FormTagsText(
                 updateTagQuery.IncludedTagNames,

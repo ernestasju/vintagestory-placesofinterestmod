@@ -3,11 +3,10 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <LangVersion>Latest</LangVersion>
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-
-	  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,7 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PlacesOfInterestMod\PlacesOfInterestMod\PlacesOfInterestMod.csproj" />
-    <ProjectReference Include="..\SourceCodeManagement\SourceCodeManagement.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -85,10 +83,6 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="System.ValueTuple" Version="4.6.1" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\PlacesOfInterestMod\SourceCodeManagement\SourceCodeManagement.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 </Project>

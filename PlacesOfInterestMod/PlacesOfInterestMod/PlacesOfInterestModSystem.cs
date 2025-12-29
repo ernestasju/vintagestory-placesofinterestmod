@@ -28,7 +28,7 @@ public class PlacesOfInterestModSystem : ModSystem
     {
         _serverApi = api;
 
-        Mod.Logger.Notification("Hello from Places of Interest server side: " + Lang.Get("places-of-interest-mod:hello"));
+        Mod.Logger.Notification("Hello from Places of Interest server side: " + Lang.Get(LocalizedTexts.hello));
 
         RegisterServerNetworkChannels();
         RegisterServerChatCommands();
@@ -38,7 +38,7 @@ public class PlacesOfInterestModSystem : ModSystem
     {
         _clientApi = api;
 
-        Mod.Logger.Notification("Hello from Places of Interest client side: " + Lang.Get("places-of-interest-mod:hello"));
+        Mod.Logger.Notification("Hello from Places of Interest client side: " + Lang.Get(LocalizedTexts.hello));
 
         RegisterClientNetworkChannels();
         RegisterClientChatCommands();
@@ -118,7 +118,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     JsonSerializer.Serialize(places));
 
                 _clientApi.TriggerChatMessage(Lang.Get(
-                    "places-of-interest-mod:copyInterestingPlacesResult",
+                    LocalizedTexts.copyInterestingPlacesResult,
                     places.Count));
             });
 
@@ -126,7 +126,7 @@ public class PlacesOfInterestModSystem : ModSystem
             (SavedPlacesPacket packet) =>
             {
                 _clientApi.TriggerChatMessage(Lang.Get(
-                    "places-of-interest-mod:pasteInterestingPlacesResult",
+                    LocalizedTexts.pasteInterestingPlacesResult,
                     packet.PlacesCount));
             });
     }
@@ -140,10 +140,10 @@ public class PlacesOfInterestModSystem : ModSystem
             .WithName("copyInterestingPlaces")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandDescription"))
+            .WithDescription(Lang.Get(LocalizedTexts.copyInterestingPlacesCommandDescription))
             .WithExamples(
-                Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandExample1"),
-                Lang.Get("places-of-interest-mod:copyInterestingPlacesCommandExample2"))
+                Lang.Get(LocalizedTexts.copyInterestingPlacesCommandExample1),
+                Lang.Get(LocalizedTexts.copyInterestingPlacesCommandExample2))
             .WithArgs(
                 _clientApi.ChatCommands.Parsers.OptionalInt("radius", 0),
                 _clientApi.ChatCommands.Parsers.OptionalAll("tags"))
@@ -167,18 +167,18 @@ public class PlacesOfInterestModSystem : ModSystem
                     });
 
                     return TextCommandResult.Success(
-                        Lang.Get("places-of-interest-mod:copyInterestingPlacesResultDownloadInProgress"));
+                        Lang.Get(LocalizedTexts.copyInterestingPlacesResultDownloadInProgress));
                 });
 
         _ = _clientApi.ChatCommands.Create()
             .WithName("pasteInterestingPlaces")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
-            .WithDescription(Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandDescription"))
+            .WithDescription(Lang.Get(LocalizedTexts.pasteInterestingPlacesCommandDescription))
             .WithExamples(
-                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample1"),
-                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample2"),
-                Lang.Get("places-of-interest-mod:pasteInterestingPlacesCommandExample3"))
+                Lang.Get(LocalizedTexts.pasteInterestingPlacesCommandExample1),
+                Lang.Get(LocalizedTexts.pasteInterestingPlacesCommandExample2),
+                Lang.Get(LocalizedTexts.pasteInterestingPlacesCommandExample3))
             .WithArgs(
                 _clientApi.ChatCommands.Parsers.OptionalWordRange("existing place action", "update", "skip", "replace"))
             .HandleWith(
@@ -190,7 +190,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     if (clipboardText is null)
                     {
                         return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultNoClipboard"));
+                            Lang.Get(LocalizedTexts.pasteInterestingPlacesResultNoClipboard));
                     }
 
                     // NOTE: Arg is guaranteed to exist.
@@ -212,7 +212,7 @@ public class PlacesOfInterestModSystem : ModSystem
                     catch (Exception)
                     {
                         return TextCommandResult.Success(
-                            Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultInvalidClipboard"));
+                            Lang.Get(LocalizedTexts.pasteInterestingPlacesResultInvalidClipboard));
                     }
 
                     serializablePlaces ??= [];
@@ -230,7 +230,7 @@ public class PlacesOfInterestModSystem : ModSystem
                         });
 
                     return TextCommandResult.Success(
-                        Lang.Get("places-of-interest-mod:pasteInterestingPlacesResultUploadInProgress"));
+                        Lang.Get(LocalizedTexts.pasteInterestingPlacesResultUploadInProgress));
                 });
     }
 }

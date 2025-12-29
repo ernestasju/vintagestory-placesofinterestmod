@@ -6,6 +6,7 @@
 		<OutputPath>bin\$(Configuration)\Mods\mod</OutputPath>
 		<Nullable>enable</Nullable>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<LangVersion>Latest</LangVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -78,6 +79,11 @@
 		</PackageReference>
 		<PackageReference Include="SumSharp" Version="2.3.0" />
 		<PackageReference Include="System.ValueTuple" Version="4.6.1" />
+		<ProjectReference Include="..\..\SourceCodeManagement\SourceCodeManagement.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<AdditionalFiles Include="assets\*\lang\*.json" />
 	</ItemGroup>
 
 </Project>
