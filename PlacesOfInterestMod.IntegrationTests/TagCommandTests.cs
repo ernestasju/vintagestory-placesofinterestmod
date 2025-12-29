@@ -1,16 +1,12 @@
 using FluentAssertions;
-using Moq;
-using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
-using Vintagestory.GameContent;
 
 namespace PlacesOfInterestMod.IntegrationTests;
 
 /// <summary>
-/// Integration tests for the /tag command.
+/// Tests for the /tag command.
 /// </summary>
 /// <remarks>
-/// IVintageStoryPlayer mock should be created for each ServerChatCommands.HandleCommandTagInterestingPlace call.
+/// PlayerMock should be created for each ServerChatCommands.HandleCommandTagInterestingPlace call.
 /// It is only there to fake VintageStory API and each command call should use a fresh instance.
 /// </remarks>
 public class TagCommandTests
