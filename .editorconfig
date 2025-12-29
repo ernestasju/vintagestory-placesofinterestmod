@@ -751,3 +751,7 @@ dotnet_diagnostic.IDE0290.severity = silent
 ### SA1601: Describe partial classes
 ### No. I don't think I will.
 dotnet_diagnostic.SA1601.severity = silent
+
+### T0000: Do not prefix methods with Get
+### No. I don't think I will.
+dotnet_diagnostic.T0000.severity = silent

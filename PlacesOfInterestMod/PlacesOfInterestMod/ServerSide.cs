@@ -7,11 +7,42 @@ using Vintagestory.API.Server;
 
 namespace PlacesOfInterestMod;
 
-public static class ServerChatCommands
+public sealed class ServerSide
 {
-    public static void RegisterChatCommands(ICoreServerAPI serverApi)
+    private readonly ICoreServerAPI _serverApi;
+    private readonly IServerNetworkChannel _serverNetworkChannel;
+
+    public ServerSide(ICoreServerAPI serverApi, IServerNetworkChannel serverNetworkChannel)
     {
-        _ = serverApi.ChatCommands.Create()
+        ArgumentNullException.ThrowIfNull(serverApi);
+        ArgumentNullException.ThrowIfNull(serverNetworkChannel);
+
+        _serverApi = serverApi;
+        _serverNetworkChannel = serverNetworkChannel;
+    }
+
+    public void Register()
+    {
+        _serverNetworkChannel.RegisterMessageType<LoadPlacesPacket>();
+        _serverNetworkChannel.RegisterMessageType<LoadedPlacesPacket>();
+        _serverNetworkChannel.RegisterMessageType<SavePlacesPacket>();
+        _serverNetworkChannel.RegisterMessageType<SavedPlacesPacket>();
+
+        _serverNetworkChannel.SetMessageHandler(
+            (IServerPlayer fromPlayer, LoadPlacesPacket packet) =>
+            {
+                VintageStoryServerPlayer serverPlayer = new(fromPlayer, _serverNetworkChannel);
+                HandleNetworkPacket(serverPlayer, packet);
+            });
+
+        _serverNetworkChannel.SetMessageHandler(
+            (IServerPlayer fromPlayer, SavePlacesPacket packet) =>
+            {
+                VintageStoryServerPlayer serverPlayer = new(fromPlayer, _serverNetworkChannel);
+                HandleNetworkPacket(serverPlayer, packet);
+            });
+
+        _ = _serverApi.ChatCommands.Create()
             .WithName("clearInterestingPlaces")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
@@ -20,10 +51,10 @@ public static class ServerChatCommands
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     VintageStoryPlayer player = new(args.Caller.Player);
-                    return HandleCommandClearInterestingPlaces(player);
+                    return HandleChatCommandClearInterestingPlaces(player);
                 });
 
-        _ = serverApi.ChatCommands.Create()
+        _ = _serverApi.ChatCommands.Create()
             .WithName("interesting")
             .WithAlias("tag")
             .RequiresPlayer()
@@ -33,38 +64,38 @@ public static class ServerChatCommands
                 Lang.Get(LocalizedTexts.interestingCommandExample1),
                 Lang.Get(LocalizedTexts.interestingCommandExample2))
             .WithArgs(
-                serverApi.ChatCommands.Parsers.OptionalAll("tags"))
+                _serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     VintageStoryPlayer player = new(args.Caller.Player);
-                    return HandleCommandTagInterestingPlace(player, args.LastArg?.ToString() ?? "");
+                    return HandleChatCommandTagInterestingPlace(player, args.LastArg?.ToString() ?? "");
                 });
 
-        serverApi.ChatCommands.Create()
+        _serverApi.ChatCommands.Create()
             .WithName("findInterestingPlace")
             .WithAlias("dist")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
             .WithDescription(Lang.Get(LocalizedTexts.findInterestingPlaceCommandDescription))
             .WithArgs(
-                serverApi.ChatCommands.Parsers.All("tags"))
+                _serverApi.ChatCommands.Parsers.All("tags"))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     VintageStoryPlayer player = new(args.Caller.Player);
-                    return HandleCommandFindInterestingPlace(player, args.LastArg?.ToString() ?? "");
+                    return HandleChatCommandFindInterestingPlace(player, args.LastArg?.ToString() ?? "");
                 });
 
-        serverApi.ChatCommands.Create()
+        _serverApi.ChatCommands.Create()
             .WithName("whatsSoInteresting")
             .WithAlias("tags")
             .RequiresPlayer()
             .RequiresPrivilege(Privilege.chat)
             .WithDescription(Lang.Get(LocalizedTexts.whatsSoInterestingCommandDescription))
             .WithArgs(
-                serverApi.ChatCommands.Parsers.OptionalInt("radius", 100),
-                serverApi.ChatCommands.Parsers.OptionalAll("tags"))
+                _serverApi.ChatCommands.Parsers.OptionalInt("radius", 100),
+                _serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
@@ -76,10 +107,10 @@ public static class ServerChatCommands
                     }
 
                     VintageStoryPlayer player = new(args.Caller.Player);
-                    return HandleCommandFindTagsAroundPlayer(player, searchRadius, args.LastArg?.ToString() ?? "");
+                    return HandleChatCommandFindTagsAroundPlayer(player, searchRadius, args.LastArg?.ToString() ?? "");
                 });
 
-        serverApi.ChatCommands.Create()
+        _serverApi.ChatCommands.Create()
             .WithName("editInterestingPlaces")
             .WithAlias("editTags")
             .RequiresPlayer()
@@ -90,8 +121,8 @@ public static class ServerChatCommands
                 Lang.Get(LocalizedTexts.editInterestingPlacesCommandExample2),
                 Lang.Get(LocalizedTexts.editInterestingPlacesCommandExample3))
             .WithArgs(
-                serverApi.ChatCommands.Parsers.OptionalInt("radius", 16),
-                serverApi.ChatCommands.Parsers.OptionalAll("tags"))
+                _serverApi.ChatCommands.Parsers.OptionalInt("radius", 16),
+                _serverApi.ChatCommands.Parsers.OptionalAll("tags"))
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
@@ -103,7 +134,7 @@ public static class ServerChatCommands
                     }
 
                     VintageStoryPlayer player = new(args.Caller.Player);
-                    return HandleCommandEditPlaces(player, searchRadius, args.LastArg?.ToString() ?? "");
+                    return HandleChatCommandEditPlaces(player, searchRadius, args.LastArg?.ToString() ?? "");
                 });
 
         // NOTE: Commented for later.
@@ -120,7 +151,41 @@ public static class ServerChatCommands
         //          });
     }
 
-    public static LocalizedTextCommandResult HandleCommandClearInterestingPlaces(
+    public static void HandleNetworkPacket(
+        IVintageStoryServerPlayer serverPlayer,
+        LoadPlacesPacket packet)
+    {
+        PlayerPlacesOfInterest poi = new(serverPlayer.Player);
+
+        serverPlayer.SendPacket(
+            new LoadedPlacesPacket()
+            {
+                Places = poi.Places
+                    .All
+                    .AroundPlayer(packet.SearchRadius)
+                    .Where(TagQuery.Parse(packet.TagQueriesText))
+                    .Select(x => (ProtoPlace)x)
+                    .ToList(),
+            });
+    }
+
+    public static void HandleNetworkPacket(
+        IVintageStoryServerPlayer serverPlayer,
+        SavePlacesPacket packet)
+    {
+        List<Place> newPlaces = (packet.Places ?? []).SelectNonNulls(x => (Place?)x).ToList();
+
+        PlayerPlacesOfInterest poi = new(serverPlayer.Player);
+        poi.Places.Import(newPlaces, packet.ExistingPlaceAction);
+
+        serverPlayer.SendPacket(
+            new SavedPlacesPacket()
+            {
+                PlacesCount = newPlaces.Count,
+            });
+    }
+
+    public static LocalizedTextCommandResult HandleChatCommandClearInterestingPlaces(
         IVintageStoryPlayer player)
     {
         PlayerPlacesOfInterest poi = new(player);
@@ -129,7 +194,7 @@ public static class ServerChatCommands
         return LocalizedTextCommandResult.Success(new(LocalizedTexts.clearedInterestingPlaces));
     }
 
-    public static LocalizedTextCommandResult HandleCommandTagInterestingPlace(
+    public static LocalizedTextCommandResult HandleChatCommandTagInterestingPlace(
         IVintageStoryPlayer player,
         string tags)
     {
@@ -178,7 +243,7 @@ public static class ServerChatCommands
         }
     }
 
-    public static LocalizedTextCommandResult HandleCommandFindInterestingPlace(
+    public static LocalizedTextCommandResult HandleChatCommandFindInterestingPlace(
         IVintageStoryPlayer player,
         string tags)
     {
@@ -207,7 +272,7 @@ public static class ServerChatCommands
             (int)Math.Round(poi.Places.CalculateVerticalDistance(nearestPlace))));
     }
 
-    public static LocalizedTextCommandResult HandleCommandFindTagsAroundPlayer(
+    public static LocalizedTextCommandResult HandleChatCommandFindTagsAroundPlayer(
         IVintageStoryPlayer player,
         int searchRadius,
         string tags)
@@ -233,7 +298,7 @@ public static class ServerChatCommands
             Chat.FormTagsText(uniqueTags, [], [], [])));
     }
 
-    public static LocalizedTextCommandResult HandleCommandEditPlaces(
+    public static LocalizedTextCommandResult HandleChatCommandEditPlaces(
         IVintageStoryPlayer player,
         int searchRadius,
         string tags)

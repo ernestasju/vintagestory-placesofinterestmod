@@ -17,8 +17,8 @@ public class DistCommandTests
         TestPlayerData playerData = new();
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "copper");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "copper");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.noMatchingPlacesFound);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -31,8 +31,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(100, 0, 0), "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "copper");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "copper");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -48,8 +48,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(100, 0, 50), "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "gold");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "gold");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.noMatchingPlacesFound);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -64,8 +64,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(200, 0, 0), "ore");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "ore");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "ore");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -79,8 +79,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(100, 0, 0), "copper", "tin", "ore");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "tin");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "tin");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -97,8 +97,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(75, 0, 0), "ore");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "copper ore");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "copper ore");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -113,8 +113,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(100, 0, 0), "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "copper -depleted");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "copper -depleted");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -128,8 +128,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(0, 50, 0), "cave");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "cave");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "cave");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -144,8 +144,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(80, 60, 0), "mountain");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "mountain");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "mountain");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -160,8 +160,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.XYZ, "home");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "home");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "home");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -177,8 +177,8 @@ public class DistCommandTests
 
         // First measurement
         PlayerMock playerMock1 = new(playerData);
-        LocalizedTextCommandResult commandResult1 = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock1.Object, "destination");
+        LocalizedTextCommandResult commandResult1 = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock1.Object, "destination");
 
         commandResult1.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult1.AsSuccess.Args[1].Should().Be(100);
@@ -186,8 +186,8 @@ public class DistCommandTests
         // Move player closer
         playerData.MoveToDifferentPlace(50, 0, 0);
         PlayerMock playerMock2 = new(playerData);
-        LocalizedTextCommandResult commandResult2 = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock2.Object, "destination");
+        LocalizedTextCommandResult commandResult2 = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock2.Object, "destination");
 
         commandResult2.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult2.AsSuccess.Args[1].Should().Be(50, "distance should decrease as player moves closer");
@@ -200,8 +200,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(-100, -30, -50), "underground");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "underground");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "underground");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -217,8 +217,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "tin");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "copper_ore");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "copper_ore");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);
@@ -232,8 +232,8 @@ public class DistCommandTests
         playerData.AddPlace(playerData.Place(100, 0, 0), "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindInterestingPlace(playerMock.Object, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindInterestingPlace(playerMock.Object, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.foundNearestPlace);
         commandResult.AsSuccess.Args.Should().HaveCount(3);

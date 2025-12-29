@@ -17,8 +17,8 @@ public class EditTagsCommandTests
         TestPlayerData playerData = new();
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "-> copper");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "-> copper");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultNoPlacesFound);
         commandResult.AsSuccess.Args.Should().HaveCount(2);
@@ -32,8 +32,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(200, 0, 0), "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "-> tin");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "-> tin");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultNoPlacesFound);
         commandResult.AsSuccess.Args[0].Should().Be(100);
@@ -47,8 +47,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(75, 0, 0), "tin");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "-> ore");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "-> ore");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args.Should().HaveCount(4);
@@ -67,8 +67,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(25, 0, 0), "coal");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "ore -> rich");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "ore -> rich");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(2, "only places with 'ore' tag should be updated");
@@ -85,8 +85,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "copper", "ore");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper -> rich");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper -> rich");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         playerData.ProtoPlaces[0].Tags!.Select(x => x.Name).Should().BeEquivalentTo("copper", "ore", "rich");
@@ -99,8 +99,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "copper", "ore", "depleted");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper -> -depleted");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper -> -depleted");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         playerData.ProtoPlaces[0].Tags!.Select(x => x.Name).Should().BeEquivalentTo("copper", "ore");
@@ -113,8 +113,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "copper", "depleted");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper depleted -> -copper -depleted");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper depleted -> -copper -depleted");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[2].Should().Be(1, "one place should be removed");
@@ -128,8 +128,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "copper", "ore", "depleted");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "-> rich -depleted");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "-> rich -depleted");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         playerData.ProtoPlaces[0].Tags!.Select(x => x.Name).Should().BeEquivalentTo("copper", "ore", "rich");
@@ -144,8 +144,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(25, 0, 0), "ore");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper ore -> rich");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper ore -> rich");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(1, "only the place with both tags should be updated");
@@ -160,8 +160,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(75, 0, 0), "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper -depleted -> rich");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper -depleted -> rich");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(1, "only non-depleted copper place should be updated");
@@ -176,8 +176,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(10000, 0, 0), "faraway");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, int.MaxValue, "-> visited");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, int.MaxValue, "-> visited");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(1);
@@ -193,8 +193,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(25, 0, 0), "tin", "ore");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper -> processed");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper -> processed");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(2, "number of places found");
@@ -209,8 +209,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(75, 0, 0), "tin");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "gold -> rich");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "gold -> rich");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultNoPlacesFound);
         commandResult.AsSuccess.Args[0].Should().Be(100);
@@ -223,8 +223,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "copper", "ore");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper ->");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper ->");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[3].Should().Be(0, "no changes should be made with empty update query");
@@ -238,8 +238,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "copper", "ore", "unprocessed");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "-> processed -unprocessed");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "-> processed -unprocessed");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         playerData.ProtoPlaces[0].Tags!.Select(x => x.Name).Should().BeEquivalentTo("copper", "ore", "processed");
@@ -252,8 +252,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.XYZ, "home");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 10, "-> base");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 10, "-> base");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         playerData.ProtoPlaces[0].Tags!.Select(x => x.Name).Should().BeEquivalentTo("home", "base");
@@ -267,8 +267,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(50, 0, 0), "far");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 20, "-> visited");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 20, "-> visited");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(1, "only the nearby place should be updated");
@@ -285,8 +285,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(25, 0, 0), "coal");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "~*ore -> -rich");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "~*ore -> -rich");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(2, "both ore places should match pattern");
@@ -303,8 +303,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(75, 0, 0), "temporary");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "temporary -> -temporary");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "temporary -> -temporary");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[2].Should().Be(2, "both places should be removed");
@@ -320,8 +320,8 @@ public class EditTagsCommandTests
         playerData.AddPlace(playerData.Place(25, 0, 0), "tin");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandEditPlaces(playerMock.Object, 100, "copper depleted -> -copper -depleted");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandEditPlaces(playerMock.Object, 100, "copper depleted -> -copper -depleted");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.editInterestingPlacesResultUpdatedPlaces);
         commandResult.AsSuccess.Args[0].Should().Be(1, "one place matched the search");
@@ -338,7 +338,7 @@ public class EditTagsCommandTests
 
         // First update at starting position
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandEditPlaces(playerMock1.Object, 20, "landmark -> visited");
+        ServerSide.HandleChatCommandEditPlaces(playerMock1.Object, 20, "landmark -> visited");
 
         playerData.ProtoPlaces[0].Tags!.Select(x => x.Name).Should().Contain("visited");
         playerData.ProtoPlaces[1].Tags!.Select(x => x.Name).Should().NotContain("visited");
@@ -346,7 +346,7 @@ public class EditTagsCommandTests
         // Move to second area and update
         playerData.MoveToDifferentPlace(100, 0, 0);
         PlayerMock playerMock2 = new(playerData);
-        ServerChatCommands.HandleCommandEditPlaces(playerMock2.Object, 20, "landmark -visited -> mapped");
+        ServerSide.HandleChatCommandEditPlaces(playerMock2.Object, 20, "landmark -visited -> mapped");
 
         playerData.ProtoPlaces[1].Tags!.Select(x => x.Name).Should().Contain("mapped");
         playerData.ProtoPlaces[0].Tags!.Select(x => x.Name).Should().NotContain("mapped");

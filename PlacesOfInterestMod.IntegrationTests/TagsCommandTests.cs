@@ -17,8 +17,8 @@ public class TagsCommandTests
         TestPlayerData playerData = new();
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.noInterestingTagsFound);
     }
@@ -30,8 +30,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.XYZ, "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -47,8 +47,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(20, 0, 0), "silver");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -64,8 +64,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(51, 0, 0), "faraway");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 50, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 50, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -82,8 +82,8 @@ public class TagsCommandTests
 
         // First search at starting position
         PlayerMock playerMock1 = new(playerData);
-        LocalizedTextCommandResult commandResult1 = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock1.Object, 10, "");
+        LocalizedTextCommandResult commandResult1 = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock1.Object, 10, "");
 
         commandResult1.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult1 = (string)commandResult1.AsSuccess.Args[0];
@@ -92,8 +92,8 @@ public class TagsCommandTests
         // Move player to second area
         playerData.MoveToDifferentPlace(15, 0, 0);
         PlayerMock playerMock2 = new(playerData);
-        LocalizedTextCommandResult commandResult2 = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock2.Object, 10, "");
+        LocalizedTextCommandResult commandResult2 = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock2.Object, 10, "");
 
         commandResult2.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult2 = (string)commandResult2.AsSuccess.Args[0];
@@ -109,8 +109,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(20, 0, 0), "village");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "-> ore");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "-> ore");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -127,8 +127,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(20, 0, 0), "village");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "-> -ore");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "-> -ore");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -145,8 +145,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(20, 0, 0), "village");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "ore -> -ore");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "ore -> -ore");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         commandResult.AsSuccess.Args.Should().HaveCount(1);
@@ -161,8 +161,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(1, 0, 0), "nearby");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 0, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 0, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.noInterestingTagsFound);
     }
@@ -174,8 +174,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(0, 0, 0), "nearby");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, -10, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, -10, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.noInterestingTagsFound);
     }
@@ -188,16 +188,16 @@ public class TagsCommandTests
 
         // First search finds tag
         PlayerMock playerMock1 = new(playerData);
-        LocalizedTextCommandResult commandResult1 = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock1.Object, 20, "");
+        LocalizedTextCommandResult commandResult1 = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock1.Object, 20, "");
 
         commandResult1.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
 
         // Move player far away
         playerData.MoveToDifferentPlace(50, 0, 0);
         PlayerMock playerMock2 = new(playerData);
-        LocalizedTextCommandResult commandResult2 = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock2.Object, 20, "");
+        LocalizedTextCommandResult commandResult2 = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock2.Object, 20, "");
 
         commandResult2.AsSuccess.Key.Should().Be(LocalizedTexts.noInterestingTagsFound);
     }
@@ -211,8 +211,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(20, 0, 0), "copper");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult = (string)commandResult.AsSuccess.Args[0];
@@ -229,8 +229,8 @@ public class TagsCommandTests
 
         // Debug: Check what we actually get
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "mine");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "mine");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult = (string)commandResult.AsSuccess.Args[0];
@@ -246,8 +246,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(30, 0, 0), "copper", "raw");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 100, "mine copper");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 100, "mine copper");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult = (string)commandResult.AsSuccess.Args[0];
@@ -263,8 +263,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(30, 0, 0), "village");
 
         PlayerMock player = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(player.Object, 100, "mine -depleted");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(player.Object, 100, "mine -depleted");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult = (string)commandResult.AsSuccess.Args[0];
@@ -282,8 +282,8 @@ public class TagsCommandTests
         // Move to second place
         playerData.MoveToDifferentPlace(10, 0, 0);
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 9, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 9, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult = (string)commandResult.AsSuccess.Args[0];
@@ -299,8 +299,8 @@ public class TagsCommandTests
         playerData.AddPlace(playerData.Place(20, 0, 0), "c");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandFindTagsAroundPlayer(playerMock.Object, 50, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandFindTagsAroundPlayer(playerMock.Object, 50, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.whatsSoInterestingResult);
         string tagsResult = (string)commandResult.AsSuccess.Args[0];

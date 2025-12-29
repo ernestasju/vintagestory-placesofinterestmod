@@ -17,8 +17,8 @@ public class TagCommandTests
         TestPlayerData playerData = new();
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultNothingToAdd);
         playerData.ProtoPlaces.Should().BeEmpty();
@@ -30,8 +30,8 @@ public class TagCommandTests
         TestPlayerData playerData = new();
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "a");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "a");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResult);
         playerData.ProtoPlaces.Should().HaveCount(1);
@@ -45,8 +45,8 @@ public class TagCommandTests
         TestPlayerData playerData = new();
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "-b");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "-b");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultNothingToAdd);
         playerData.ProtoPlaces.Should().BeEmpty();
@@ -59,8 +59,8 @@ public class TagCommandTests
         playerData.AddPlace(playerData.XYZ, "c");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "c -c");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "c -c");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultUpdated);
         playerData.ProtoPlaces.Should().HaveCount(1, "tag query always prioritizes tag additions");
@@ -75,8 +75,8 @@ public class TagCommandTests
         playerData.AddPlace(playerData.XYZ, "d");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "e -d");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "e -d");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultUpdated);
         playerData.ProtoPlaces.Should().HaveCount(1);
@@ -90,8 +90,8 @@ public class TagCommandTests
         TestPlayerData playerData = new();
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "f g h");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "f g h");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResult);
         playerData.ProtoPlaces.Should().HaveCount(1);
@@ -106,8 +106,8 @@ public class TagCommandTests
         playerData.AddPlace(playerData.XYZ, "i");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "j");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "j");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultUpdated);
         playerData.ProtoPlaces.Should().HaveCount(1);
@@ -122,8 +122,8 @@ public class TagCommandTests
         playerData.AddPlace(playerData.XYZ, "k", "l");
 
         PlayerMock playerMock = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock.Object, "-k -l");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock.Object, "-k -l");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultUpdated);
         playerData.ProtoPlaces.Should().BeEmpty("place should be removed when all tags are removed");
@@ -136,14 +136,14 @@ public class TagCommandTests
 
         // Tag at starting position
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock1.Object, "area1");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock1.Object, "area1");
 
         playerData.ProtoPlaces.Should().HaveCount(1);
 
         // Move to another position within the same place
         playerData.MoveAroundThePlace();
         PlayerMock playerMock2 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock2.Object, "area2");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock2.Object, "area2");
 
         // Should update same place
         playerData.ProtoPlaces.Should().HaveCount(1, "moving within same place updates existing place");
@@ -157,15 +157,15 @@ public class TagCommandTests
 
         // Tag at starting position
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock1.Object, "place1");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock1.Object, "place1");
 
         playerData.ProtoPlaces.Should().HaveCount(1);
 
         // Move far away (10 place cells = 80 blocks)
         playerData.MoveToDifferentPlace(80, 0, 0);
         PlayerMock playerMock2 = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock2.Object, "place2");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock2.Object, "place2");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResult);
         playerData.ProtoPlaces.Should().HaveCount(2, "moving to different place creates new place");
@@ -179,12 +179,12 @@ public class TagCommandTests
 
         // Tag at starting position
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock1.Object, "home");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock1.Object, "home");
 
         // Move to different place and tag
         playerData.MoveToDifferentPlace(20, 0, 0);
         PlayerMock playerMock2 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock2.Object, "away");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock2.Object, "away");
 
         playerData.ProtoPlaces.Should().HaveCount(2);
 
@@ -192,8 +192,8 @@ public class TagCommandTests
         playerData.MoveToDifferentPlace(-20, 0, 0);
         playerData.MoveAroundThePlace();
         PlayerMock playerMock3 = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock3.Object, "base");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock3.Object, "base");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultUpdated);
         playerData.ProtoPlaces.Should().HaveCount(2);
@@ -208,13 +208,13 @@ public class TagCommandTests
 
         // Tag at starting position
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock1.Object, "surface");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock1.Object, "surface");
 
         // Move 8 blocks up (crosses vertical place boundary)
         playerData.MoveToDifferentPlace(0, 8, 0);
         PlayerMock playerMock2 = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock2.Object, "upper");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock2.Object, "upper");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResult);
         playerData.ProtoPlaces.Should().HaveCount(2, "vertical movement to different place creates new place");
@@ -229,13 +229,13 @@ public class TagCommandTests
 
         // Tag at starting position
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock1.Object, "corner1");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock1.Object, "corner1");
 
         // Move diagonally to a different place
         playerData.MoveToDifferentPlace(10, 10, 10);
         PlayerMock playerMock2 = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock2.Object, "corner2");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock2.Object, "corner2");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResult);
         playerData.ProtoPlaces.Should().HaveCount(2);
@@ -250,12 +250,12 @@ public class TagCommandTests
 
         // Tag first place
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock1.Object, "mine copper");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock1.Object, "mine copper");
 
         // Move to second place and tag
         playerData.MoveToDifferentPlace(30, 0, 0);
         PlayerMock playerMock2 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock2.Object, "mine iron");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock2.Object, "mine iron");
 
         playerData.ProtoPlaces.Should().HaveCount(2);
 
@@ -263,8 +263,8 @@ public class TagCommandTests
         playerData.MoveToDifferentPlace(-30, 0, 0);
         playerData.MoveAroundThePlace();
         PlayerMock playerMock3 = new(playerData);
-        LocalizedTextCommandResult commandResult = ServerChatCommands
-            .HandleCommandTagInterestingPlace(playerMock3.Object, "-copper");
+        LocalizedTextCommandResult commandResult = ServerSide
+            .HandleChatCommandTagInterestingPlace(playerMock3.Object, "-copper");
 
         commandResult.AsSuccess.Key.Should().Be(LocalizedTexts.interestingCommandResultUpdated);
         playerData.ProtoPlaces.Should().HaveCount(2);
@@ -279,12 +279,12 @@ public class TagCommandTests
 
         // Tag at starting position
         PlayerMock playerMock1 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock1.Object, "tag1");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock1.Object, "tag1");
 
         // Move to boundary of same place
         playerData.MoveToPlaceBoundary();
         PlayerMock playerMock2 = new(playerData);
-        ServerChatCommands.HandleCommandTagInterestingPlace(playerMock2.Object, "tag2");
+        ServerSide.HandleChatCommandTagInterestingPlace(playerMock2.Object, "tag2");
 
         // Should still be in same place
         playerData.ProtoPlaces.Should().HaveCount(1, "moving to edge of same place updates existing place");
