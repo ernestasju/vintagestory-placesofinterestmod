@@ -50,7 +50,7 @@ public class LocalizedTextGenerator : IIncrementalGenerator
                 (x, c) => true,
                 (x, c) => new LocalizationKeysClass()
                 {
-                    Namespace = x.TargetSymbol.CalculateFullNamespaceName(),
+                    Namespace = x.TargetSymbol.FullNamespace,
                     ClassName = x.TargetSymbol.Name,
                     Paths = x.Attributes
                         .Select(a => a.ConstructorArguments.First().Value!.ToString()!)
@@ -137,55 +137,31 @@ public class LocalizedTextGenerator : IIncrementalGenerator
             ctx.AddSource("LocalizedTextsAttribute.g.cs", SourceText.From(source.ToString(), Encoding.UTF8));
         });
     }
-}
 
-public static class Extensions
-{
-    public static string CalculateFullNamespaceName(
-        this ISymbol symbol)
+    public class LocalizationFile
     {
-        INamespaceSymbol? ns = symbol.ContainingNamespace;
+        public string Path { get; set; } = "";
 
-        string fullName = "";
-        while (ns is not null && !string.IsNullOrEmpty(ns.Name))
-        {
-            if (fullName != "")
-            {
-                fullName = "." + fullName;
-            }
+        public bool MissingPath { get; set; } = false;
 
-            fullName = ns.Name + fullName;
-
-            ns = ns.ContainingNamespace;
-        }
-
-        return fullName;
+        public string[] Keys { get; set; } = [];
     }
-}
 
-public class LocalizationFile
-{
-    public string Path { get; set; } = "";
+    public class LocalizationKeysClass
+    {
+        public string Namespace { get; set; } = "";
 
-    public bool MissingPath { get; set; } = false;
+        public string ClassName { get; set; } = "";
 
-    public string[] Keys { get; set; } = [];
-}
+        public string[] Paths { get; set; } = [];
+    }
 
-public class LocalizationKeysClass
-{
-    public string Namespace { get; set; } = "";
+    public class GeneratedLocalizationKeysClass
+    {
+        public string Namespace { get; set; } = "";
 
-    public string ClassName { get; set; } = "";
+        public string ClassName { get; set; } = "";
 
-    public string[] Paths { get; set; } = [];
-}
-
-public class GeneratedLocalizationKeysClass
-{
-    public string Namespace { get; set; } = "";
-
-    public string ClassName { get; set; } = "";
-
-    public IEnumerable<LocalizationFile> LocalizationFiles { get; set; } = [];
+        public IEnumerable<LocalizationFile> LocalizationFiles { get; set; } = [];
+    }
 }

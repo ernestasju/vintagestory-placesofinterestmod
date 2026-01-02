@@ -40,11 +40,12 @@ public sealed class CopyPlacesTestHelper
     {
         _clientSideMock
             .Setup(x => x.SendNetworkPacketToServerSide(It.IsAny<LoadPlacesPacket>()))
-            .Callback<LoadPlacesPacket>(packet =>
-            {
-                _sentLoadPacket = packet;
-                SimulateServerProcessing(packet);
-            });
+            .Callback<LoadPlacesPacket>(
+                packet =>
+                {
+                    _sentLoadPacket = packet;
+                    SimulateServerProcessing(packet);
+                });
 
         _clientSideMock
             .Setup(x => x.SetClipboardText(It.IsAny<string>()))
@@ -62,11 +63,12 @@ public sealed class CopyPlacesTestHelper
 
         _serverPlayerMock
             .Setup(x => x.SendPacket(It.IsAny<LoadedPlacesPacket>()))
-            .Callback<LoadedPlacesPacket>(packet =>
-            {
-                _receivedLoadedPacket = packet;
-                SimulateClientReceivingPacket(packet);
-            });
+            .Callback<LoadedPlacesPacket>(
+                packet =>
+                {
+                    _receivedLoadedPacket = packet;
+                    SimulateClientReceivingPacket(packet);
+                });
     }
 
     private void SimulateServerProcessing(LoadPlacesPacket packet)
