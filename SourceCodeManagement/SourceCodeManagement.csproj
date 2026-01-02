@@ -26,4 +26,8 @@
 	  <PackageReference Include="System.ValueTuple" Version="4.6.1" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<None Include="ClassWithNamespaces_Design.md" />
+	</ItemGroup>
+
 </Project>
