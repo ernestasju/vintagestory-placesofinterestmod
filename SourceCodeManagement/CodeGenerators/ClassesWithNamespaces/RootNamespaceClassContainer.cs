@@ -106,7 +106,7 @@ internal sealed partial class RootNamespaceClassContainer
 
         return CompilationUnit()
             .AddMembers(
-                FileScopedNamespaceDeclaration(ParseName(Namespace))
+                NamespaceDeclaration(ParseName(Namespace))
                     .AddMembers(wrappedClass));
     }
 

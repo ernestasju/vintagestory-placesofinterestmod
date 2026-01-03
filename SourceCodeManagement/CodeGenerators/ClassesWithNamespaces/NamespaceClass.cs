@@ -22,6 +22,19 @@ internal sealed class NamespaceClass
 
     private string NamespaceName => Parent is null ? "This" : ClassName[..^NamespaceSuffix.Length];
 
+    public IEnumerable<NamespaceClass> Parents
+    {
+        get
+        {
+            var current = Parent;
+            while (current is not null)
+            {
+                yield return current;
+                current = current.Parent;
+            }
+        }
+    }
+
     public static NamespaceClass? ParseSyntax(ClassDeclarationSyntax classDeclaration, NamespaceClass? parent = null)
     {
         if (classDeclaration?.Identifier.Text is null)
@@ -81,8 +94,9 @@ internal sealed class NamespaceClass
             .AddMembers([
                 .. ParentField(),
                 .. Constructor(),
-                .. ChildNamespaceClasses.Select(child => child.AccessorProperty()),
+                .. ChildNamespaceClasses.Select(child => child.ChildNamespaceProperty()),
                 .. ChildNamespaceClasses.Select(child => child.ToClassDeclarationSyntax()),
+                .. Parents.Select((ancestor, depth) => ancestor.AncestorNamespaceProperty(depth + 1)),
             ]);
     }
 
@@ -114,7 +128,7 @@ internal sealed class NamespaceClass
             ])))
             .WithBody(Block(List([
                 .. Parent?.ParentInitializer() ?? [],
-                .. ChildNamespaceClasses.Select(x => x.PropertyInitializer()),
+                .. ChildNamespaceClasses.Select(x => x.ChildNamespaceInitializer()),
             ])));
     }
 
@@ -133,7 +147,7 @@ internal sealed class NamespaceClass
                 IdentifierName("parent")));
     }
 
-    private ExpressionStatementSyntax PropertyInitializer()
+    private ExpressionStatementSyntax ChildNamespaceInitializer()
     {
         return ExpressionStatement(
             AssignmentExpression(
@@ -146,7 +160,7 @@ internal sealed class NamespaceClass
                                 Argument(ThisExpression()))))));
     }
 
-    private MemberDeclarationSyntax AccessorProperty() =>
+    private MemberDeclarationSyntax ChildNamespaceProperty() =>
         PropertyDeclaration(
                 IdentifierName(ClassName),
                 Identifier(NamespaceName))
@@ -156,4 +170,32 @@ internal sealed class NamespaceClass
                     SingletonList<AccessorDeclarationSyntax>(
                         AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))));
+
+
+    private MemberDeclarationSyntax AncestorNamespaceProperty(int depth) =>
+        PropertyDeclaration(
+                IdentifierName(ClassName),
+                Identifier(NamespaceName))
+            .WithModifiers(Modifiers([ SyntaxKind.PublicKeyword ]))
+            .WithAccessorList(
+                AccessorList(
+                    SingletonList<AccessorDeclarationSyntax>(
+                        AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                            .WithExpressionBody(
+                                ArrowExpressionClause(
+                                    BuildParentAccessExpression(depth)))
+                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))));
+
+    private ExpressionSyntax BuildParentAccessExpression(int depth)
+    {
+        ExpressionSyntax expression = IdentifierName("_parent");
+        for (int i = 0; i < depth - 1; i++)
+        {
+            expression = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                expression,
+                IdentifierName("_parent"));
+        }
+        return expression;
+    }
 }
