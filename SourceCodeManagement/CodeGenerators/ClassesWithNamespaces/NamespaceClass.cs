@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -14,7 +12,7 @@ internal sealed class NamespaceClass
     public required IReadOnlyList<NamespaceClass> ChildNamespaceClasses { get; set; }
     public NamespaceClass? Parent { get; init; }
     public required bool HasMatchingConstructor { get; init; }
-    public required SyntaxKind[] OriginalAccessibility { get; init; }
+    public required NamespaceAccessibility Accessibility { get; init; }
 
     private NamespaceClass()
     {
@@ -27,15 +25,13 @@ internal sealed class NamespaceClass
             return null;
         }
 
-        var hasMatchingConstructor = HasConstructorWithExpectedParameters(classDeclaration, parent?.ClassName);
-
         var current = new NamespaceClass
         {
             ClassName = classDeclaration.Identifier.Text,
             ChildNamespaceClasses = System.Array.Empty<NamespaceClass>(),
             Parent = parent,
-            HasMatchingConstructor = hasMatchingConstructor,
-            OriginalAccessibility = classDeclaration.AccessibilityModifiers.ToArray(),
+            HasMatchingConstructor = HasConstructorWithExpectedParameters(classDeclaration, parent?.ClassName),
+            Accessibility = new NamespaceAccessibility(classDeclaration, parent),
         };
 
         var childNamespaceClasses = classDeclaration.Members
@@ -62,8 +58,8 @@ internal sealed class NamespaceClass
             .WithLeadingTrivia(
                 Comments([
                     $"// Namespace name: {GetNamespaceName()}",
-                    $"// Namespace accessibility: {GetEffectiveAccessibility().ToDisplayString()}",
-                    $"// Original class accessibility: {OriginalAccessibility.ToDisplayString()}"]));
+                    $"// Namespace accessibility: {Accessibility.Effective.ToDisplayString()}",
+                    $"// Original class accessibility: {Accessibility.Original.ToDisplayString()}"]));
 
         var members = new List<MemberDeclarationSyntax>();
 
@@ -178,21 +174,6 @@ internal sealed class NamespaceClass
         }
 
         return GetNamespacePropertyName(this);
-    }
-
-    private SyntaxKind[] GetEffectiveAccessibility()
-    {
-        if (OriginalAccessibility.Length > 0)
-        {
-            return OriginalAccessibility;
-        }
-
-        if (Parent is not null)
-        {
-            return Parent.GetEffectiveAccessibility();
-        }
-
-        return new[] { SyntaxKind.PrivateKeyword };
     }
 
     private static bool IsNamespaceClass(ClassDeclarationSyntax classDeclaration)
