@@ -4,235 +4,367 @@
 
 The `ClassWithNamespaces` analyzer is a source generator that automatically generates partial class declarations and boilerplate code for classes marked with the `[ClassWithNamespaces]` attribute.
 
+**Intention:** This analyzer enables organizing non-static data within a class using a namespace-like hierarchy. Instead of having all data at the root class level, you can create nested "namespace classes" that logically group related data and functionality, while maintaining navigable parent-child relationships.
+
 The generator creates a navigable namespace hierarchy, allowing you to access parent namespaces and sibling namespace classes through auto-generated properties.
 
-## Usage
+## Generation Rules and Principles
 
-### Basic Usage
+### Rule 1: Trigger and Generated Structure
+The generation is triggered by any class with `[ClassWithNamespaces]` attribute. This is the root class / "This" namespace class.
 
-Mark any class with `[ClassWithNamespaces]` attribute:
+The generator produces a matching partial class structure, including:
+- Containing namespace (if not global)
+- Containing partial classes (if any exist)
+- The "This" namespace class itself
+
+**Will match code:**
 
 ```csharp
-using SourceCodeManagement;
+using SourceCodeManagement; // required to use ClassWithNamespaces attribute
 
-[ClassWithNamespaces]
-public partial class MySession
+namespace ContainerNamespace; // optional
+
+... class ContainerClass // zero or more container classes
 {
-    public partial class DatabaseNamespace
-    {
+   [ClassWithNamespaces]
+   ... class SomeClassWithNamespaces
+   {
         // ...
+   }
+}
+```
+
+**Will generate code:**
+
+```csharp
+namespace ContainerNamespace; // optional
+
+partial class ContainerClass // zero or more container classes
+{
+   partial class SomeClassWithNamespaces
+   {
+        // ...
+   }
+}
+```
+
+**Key Points:**
+- The attribute requires `using SourceCodeManagement;` directive (or use fully qualified `[SourceCodeManagement.ClassWithNamespaces]`)
+- The class can be at any nesting level (top-level or nested in zero or more container classes)
+- The class can be in any namespace (including global namespace)
+- The class must be `partial` (generator will create matching partial declaration)
+- `...` represents any modifiers (accessibility, static, sealed, abstract, etc.)
+- Generated code does NOT include the using directive (not needed)
+
+### Rule 2: Generated File Naming
+We name generated file `<FullNamespace>.<FullClassPath>.g.cs` where:
+- `<FullNamespace>` = Complete namespace path (empty if global namespace)
+- `<FullClassPath>` = Path to the class with `[ClassWithNamespaces]` attribute within the class hierarchy, separated by periods. Containing classes appear first.
+
+**Examples:**
+- `Demo0` in namespace `PlacesOfInterestMod.IntegrationTests`:
+  - `PlacesOfInterestMod.IntegrationTests.Demo0.g.cs`
+- `Demo1` nested in `ClassesWithNamespacesTestCases` in namespace `PlacesOfInterestMod.IntegrationTests`:
+  - `PlacesOfInterestMod.IntegrationTests.ClassesWithNamespacesTestCases.Demo1.g.cs`
+- `InnerClass` nested in `OuterClass` nested in `Container` in namespace `MyApp`:
+  - `MyApp.Container.OuterClass.InnerClass.g.cs`
+- `MyClass` in global namespace:
+  - `MyClass.g.cs`
+
+### Rule 3: Effective Accessibility
+Every namespace class will have *effective* accessibility (private, protected, internal, public).
+
+**Determining Effective Accessibility:**
+- **Root "This" namespace class (has `[ClassWithNamespaces]` attribute):**
+  - If has explicit accessibility modifier → use it
+  - If no explicit accessibility modifier → `private`
+- **Child namespace classes:**
+  - If has explicit accessibility modifier → use it
+  - If no explicit accessibility modifier → inherit parent's *effective* accessibility
+
+**Important:** 
+- Root "This" namespace class does NOT inherit accessibility from its containing class. It only uses its own explicit modifier or defaults to `private`.
+
+**Case 1: This namespace without modifier → private, child inherits private**
+
+Will match code:
+```csharp
+[ClassWithNamespaces]
+partial class RootClass // no accessibility modifier
+{
+    partial class ChildNamespace { } // no accessibility modifier
+}
+```
+
+Will generate code:
+```csharp
+partial class RootClass // only partial modifier
+{
+    private partial class ChildNamespace // accessibility modifier is inherited from RootClass (private)
+    {
+    }
+}
+```
+
+**Case 2: Child with explicit modifier overrides inherited**
+
+Will match code:
+```csharp
+[ClassWithNamespaces]
+partial class RootClass // no accessibility modifier
+{
+    internal partial class ChildNamespace { } // internal modifier
+}
+```
+
+Will generate code:
+```csharp
+partial class RootClass // only partial modifier
+{
+    internal partial class ChildNamespace // internal modifier overrides inherited private
+    {
+    }
+}
+```
+
+**Case 3: This namespace with explicit modifier, child inherits**
+
+Will match code:
+```csharp
+... partial class ParentNamespace // suppose parent has protected effective accessibility - can be explit or calculated
+{
+    partial class ChildNamespace { } // no accessibility modifier
+}
+```
+
+Will generate code:
+```csharp
+protected partial class ParentNamespace // calculated effective accessibility
+{
+    protected partial class ChildNamespace // child namespace inherits accessibility modifier from parent namespace
+    {
+    }
+}
+```
+
+### Rule 4: "This" Namespace Class Modifiers
+We do not add any modifiers other than `partial` to generated "This" namespace class.
+
+**Will match code:**
+```csharp
+[ClassWithNamespaces]
+protected sealed partial class RootClass
+{
+}
+```
+
+**Will generate code:**
+```csharp
+partial class RootClass // only 'partial', no 'protected' or 'sealed'
+{
+}
+```
+
+### Rule 5: Namespace Subclasses
+Every namespace class can have zero or more namespace subclasses named `<NamespaceName>Namespace`. Only direct subclasses are considered for each namespace class. Only `partial` classes are considered as namespace subclasses.
+
+**Will match code:**
+```csharp
+partial class SomeNamespace
+{
+    partial class FirstNamespace { } // direct child, ends with "Namespace" → included
+    
+    partial class NotANamespace // does not end with "Namespace" → excluded
+    {
+        partial class SecondNamespace { } // not direct child of namespace class → excluded
     }
     
-    public partial class CacheNamespace
-    {
-        // ...
-    }
+    class ThirdNamespace { } // direct child, ends with "Namespace", not partial → included (compiler error)
 }
 ```
 
-The generator will:
-1. Create a partial class declaration in a generated file
-2. Generate properties to navigate the namespace hierarchy
-3. Generate constructors to initialize the namespace hierarchy
-
-### What Gets Generated
-
-For each class marked with `[ClassWithNamespaces]`:
-- **Partial class declaration** with appropriate modifiers
-- **Properties** for each child namespace class
-- **Constructor** that initializes the namespace hierarchy
-- **Properties** to navigate back to parent namespaces via `This`, `ThisParent`, etc.
-
-## Generated File Names
-
-Generated files follow the naming convention:
-```
-<FullNamespace>.<OutermostClass>.<ParentClasses>.<ClassName>.g.cs
-```
-
-### Examples
-
+**Will generate code:**
 ```csharp
-// Root class in namespace
-[ClassWithNamespaces]
-public partial class TestSession  // in PlacesOfInterestMod.IntegrationTests
-// Generated file: PlacesOfInterestMod.IntegrationTests.TestSession.g.cs
-
-// Nested class in static class
-[ClassWithNamespaces]
-protected partial class Demo1  // nested in ClassesWithNamespacesTestCases (static)
-// Generated file: PlacesOfInterestMod.IntegrationTests.ClassesWithNamespacesTestCases.Demo1.g.cs
-
-// Multiple levels of nesting (unlikely but possible)
-[ClassWithNamespaces]
-internal partial class OuterClass
+partial class SomeNamespace
 {
-    [ClassWithNamespaces]
-    public partial class InnerClass
-    // Generated file: MyNamespace.OuterClass.InnerClass.g.cs
-}
-```
-
-## Accessibility Modifiers
-
-The generator preserves and intelligently handles accessibility modifiers:
-
-### Root Classes (no parent in hierarchy)
-
-- **Explicit modifier**: Uses the declared modifier
-  ```csharp
-  [ClassWithNamespaces]
-  protected partial class Demo1  // → protected partial
-  ```
-
-- **No explicit modifier**: Infers from C# nesting rules
-  - Nested in type → `private`
-  - Top-level → `internal`
-
-### Child Namespace Classes
-
-- **Explicit modifier**: Uses the declared modifier
-  ```csharp
-  internal partial class ZNamespace  // → internal partial
-  ```
-
-- **No explicit modifier**: Inherits from parent class's accessibility
-  ```csharp
-  [ClassWithNamespaces]
-  protected partial class Demo1
-  {
-      partial class XNamespace  // No explicit modifier
-      // → Inherits 'protected' from Demo1
-      // → Generated as: protected partial
-  }
-  ```
-
-## Generated Code Structure
-
-### Class Modifiers
-
-Generated classes always include:
-1. **Accessibility modifier** (from rules above)
-2. **`partial` keyword** (always added)
-3. **Other modifiers** from the original class are NOT included in generated code
-
-```csharp
-// Original user code
-[ClassWithNamespaces]
-protected sealed partial class Demo1 { }
-
-// Generated code
-protected partial class Demo1 { }
-// Note: 'sealed' is NOT in generated code - user keeps it in their file
-```
-
-### Generated Members
-
-For each namespace class child:
-```csharp
-public ClassName PropertyName { get; }
-```
-
-For each parent namespace:
-```csharp
-public ParentClassName This { get => _parent; }
-public GrandparentClassName ThisParent { get => _parent._parent; }
-```
-
-## Edge Cases & Limitations
-
-### Edge Case 1: No Namespace Children
-
-```csharp
-[ClassWithNamespaces]
-public partial class EmptySession
-{
-    // No nested classes ending with "Namespace"
-}
-```
-
-**Result**: Generator returns `null` (no file generated)  
-**Reason**: Class has no namespace children, so no boilerplate needed
-
-### Edge Case 2: Non-Partial Child Classes
-
-```csharp
-[ClassWithNamespaces]
-public partial class Demo1
-{
-    class NonPartialNamespace { }  // NOT partial
-    partial class PartialNamespace { }  // IS partial
-}
-```
-
-**Result**: Only `PartialNamespace` is processed  
-**Reason**: Only `partial` classes are considered namespace classes
-
-### Edge Case 3: User Forgets `partial` Keyword
-
-```csharp
-[ClassWithNamespaces]
-public class Demo1  // Missing 'partial'
-{
-    partial class XNamespace { }
-}
-```
-
-**Result**: Generator creates file with `partial` keyword  
-**Error**: Compiler error - duplicate class declaration without `partial` in user code  
-**User Action**: User adds `partial` to fix
-
-### Edge Case 4: User-Defined Constructor
-
-```csharp
-[ClassWithNamespaces]
-public partial class Demo1
-{
-    partial class XNamespace { }
+    // FirstNamespace and ThirdNamespace are generated (direct children ending with "Namespace")
+    // ThirdNamespace will cause compiler error due to missing 'partial' in user code
     
-    public Demo1()  // User-defined constructor
+    ... partial class FirstNamespace
     {
-        // Custom initialization
+    }
+    
+    ... partial class ThirdNamespace
+    {
     }
 }
 ```
 
-**Result**: Generator does NOT create a constructor  
-**Reason**: User has already defined one; generator respects this
+### Rule 6: Parent Reference Field
+Each namespace class other than "This" will have field `private readonly ParentNamespaceClass _parent;`.
 
-### Edge Case 5: Sealed Root Class
-
+**Will match code:**
 ```csharp
 [ClassWithNamespaces]
-public sealed partial class Demo1
+partial class RootClass
 {
-    partial class XNamespace { }
+    partial class ChildNamespace
+    {
+        partial class GrandchildNamespace { }
+    }
 }
 ```
 
-**Result**: 
-- Generated class: `public partial` (sealed is NOT added)
-- Child class: `public partial` (sealed is NOT inherited)  
-**Reason**: `sealed` modifier is not part of the namespace hierarchy contract
-
-## Modifier Inheritance Rules
-
+**Will generate code:**
+```csharp
+partial class RootClass
+{
+    // no _parent field (this is "This" namespace class)
+    
+    ... partial class ChildNamespace
+    {
+        private readonly RootClass _parent; // parent reference field
+        
+        ... partial class GrandchildNamespace
+        {
+            private readonly ChildNamespace _parent; // parent reference field
+        }
+    }
+}
 ```
-Root Class (no parent)
-├─ Has explicit accessibility → Use it
-└─ No accessibility → Infer from C# nesting (private if nested, internal if top-level)
 
-Child Class (has parent)
-├─ Has explicit accessibility → Use it
-└─ No accessibility → Inherit from parent's generated accessibility
+### Rule 7: Child Namespace Properties
+Each namespace class will have autoproperties for its directly contained non-static namespace classes that will have only getter. The property will not have setter and it will be assigned in the constructor. The property will have accessibility modifier equal to that child namespace class's *effective* accessibility (matching the property type, so visibility is consistent).
+
+**Will match code:**
+```csharp
+partial class ParentNamespace
+{
+    partial class ChildNamespace { }
+    internal partial class InternalChildNamespace { }
+}
 ```
 
-## When Generator Runs
+**Will generate code:**
+```csharp
+... partial class ParentNamespace // has some effective accessibility
+{
+    internal InternalChildNamespace InternalChild { get; } // this is internal because InternalChildNamespace is internal
+        
+    internal partial class InternalChildNamespace
+    {
+    }
+}
+```
 
-The generator runs during compilation when:
-1. A class is marked with `[ClassWithNamespaces]` attribute
-2. The class has at least one nested class ending with "Namespace"
-3. At least one of those classes has the `partial` keyword
+### Rule 8: Constructors
+Each namespace class will have a constructor that is used to assign `_parent` from constructor parameter and/or assign child namespace properties. This generated constructor will always have accessibility modifier equal to that namespace class *effective* accessibility.
+
+**Will match code:**
+```csharp
+partial class ChildNamespace { }
+```
+
+**Will generate code:**
+```csharp
+<accessibility-modifier-2> partial class ChildNamespace // from original class or calculated from class namespace hierearchy
+{
+    <accessibility-modifier-2> ChildNamespace(ParentNamespace parent) // the constructor has the same accessibility as the class
+    {
+        _parent = parent; // keep reference to parent
+    }
+}
+```
+
+### Rule 9: "This" Namespace Class Constructor
+"This" namespace class constructor will be generated without any parameters because it will not have parent namespace. Each child namespace property will always be initialized using parent namespace class instance (e.g., `new SomeNamespace(this)`).
+
+**Exception:** If user has already defined any constructor, the generator does NOT create a constructor.
+
+**Will match code:**
+```csharp
+[ClassWithNamespaces]
+partial class RootClass
+{
+    partial class ChildNamespace { }
+}
+```
+
+**Will generate code:**
+```csharp
+partial class RootClass // "This" namespace class
+{
+    ... RootClass() // no parameters, accessibility = RootClass effective accessibility
+    {
+        Child = new ChildNamespace(this); // initialize child namespace properties
+    }
+    
+    ... partial class ChildNamespace
+    {
+        ... ChildNamespace(RootClass parent) // has parent parameter
+        {
+            _parent = parent;
+        }
+    }
+}
+```
+
+### Rule 10: Ancestor Navigation Properties
+Every namespace class other than "This" namespace class will have references to all its ancestor namespace classes. Each property will have accessibility modifier equal to the **ancestor namespace class's** *effective* accessibility (the type the property points to), not the containing class's accessibility. Each property will use one or more chained `_parent` fields (e.g., `_parent._parent` to go two namespace classes up). Create ancestor properties only for non-static namespace classes.
+
+**Namespace Naming:**
+Each namespace class has a namespace name:
+- Root "This" class → namespace name is `This`
+- Child class `XNamespace` → namespace name is `X` (remove "Namespace" suffix)
+- Child class `DatabaseNamespace` → namespace name is `Database` (remove "Namespace" suffix)
+
+**Property Naming:**
+Ancestor properties use the namespace name of the target ancestor:
+- Property pointing to immediate parent → use parent's namespace name
+- Property pointing to grandparent → use grandparent's namespace name
+- And so on...
+
+**Will match code:**
+```csharp
+[ClassWithNamespaces]
+protected partial class RootClass
+{
+    protected partial class FirstNamespace
+    {
+        internal partial class SecondNamespace { }
+    }
+}
+```
+
+**Will generate code:**
+```csharp
+partial class RootClass
+{
+    protected partial class FirstNamespace
+    {
+        internal partial class SecondNamespace
+        {
+            private readonly FirstNamespace _parent;
+            
+            protected FirstNamespace First { get => _parent; } // accessibility = FirstNamespace effective (protected), NOT SecondNamespace (internal)
+            protected RootClass This { get => _parent._parent; } // accessibility = RootClass effective (protected), NOT SecondNamespace (internal)
+        }
+    }
+}
+```
+
+**Key point:** Ancestor properties match the type they point to, ensuring consistent visibility regardless of the containing class's accessibility.
+
+## Generation Conditions
+
+The generator runs during compilation when a class is marked with `[ClassWithNamespaces]` attribute.
+
+**Optional conditions** (compiler will show errors if not met):
+- Having at least one nested class ending with "Namespace"
+- Having `partial` keyword on those nested classes
+
+If no namespace children exist, the generator returns `null` (no file generated).
 
 ## File Output Location
 
@@ -242,45 +374,102 @@ Generated files are placed in the standard C# generator output directory:
 
 They are automatically included in compilation.
 
-## Troubleshooting
+## Example: Complete Generation
 
-### "ClassWithNamespacesAttribute not found"
-- Ensure the `SourceCodeManagement` analyzer DLL is referenced in your project
-- Ensure the `using SourceCodeManagement;` directive is present
+Given this user code:
 
-### "Class does not contain definition for property X"
-- Ensure the namespace class has the `partial` keyword
-- Ensure the namespace class name ends with "Namespace"
-- Ensure `[ClassWithNamespaces]` is on a parent class or the class itself
+```csharp
+using SourceCodeManagement;
 
-### Generated file not appearing
-- Check that the class has at least one nested `partial class` ending with "Namespace"
-- Check that the root class is marked with `[ClassWithNamespaces]`
-- Rebuild the project (sometimes needed after adding the attribute)
+namespace PlacesOfInterestMod.IntegrationTests;
 
-## Relevant Source Files
+internal static class Container
+{
+    [ClassWithNamespaces]
+    protected partial class Demo1
+    {
+        partial class XNamespace
+        {
+            sealed partial class YNamespace { }
+            internal partial class ZNamespace { }
+        }
+    }
+}
+```
 
-### Generator Implementation
+The generator produces `PlacesOfInterestMod.IntegrationTests.Container.Demo1.g.cs`:
 
-- **`SourceCodeManagement/CodeGenerators/ClassNamespaces/ClassNamespaceGenerator.cs`**
-  - Entry point for the source generator
-  - Handles attribute detection and source output registration
-  - Registers the `ClassWithNamespacesAttribute` post-initialization
+```csharp
+// <auto-generated/>
+namespace PlacesOfInterestMod.IntegrationTests;
 
-- **`SourceCodeManagement/CodeGenerators/ClassNamespaces/NamespaceClass.cs`**
-  - Core model representing a namespace class structure
-  - Contains `ParseSyntax()` - parses marked classes into the model
-  - Contains `ToCompilationUnitSyntax()` - generates the C# code
-  - Handles modifier calculation and file naming
+internal static partial class Container
+{
+    protected partial class Demo1
+    {
+        protected XNamespace X { get => _parent; }
 
-- **`SourceCodeManagement/Extensions.cs`**
-  - Extension methods for symbol operations
-  - `CalculateFullNamespaceName()` - gets the full namespace
-  - `ReduceWithParents<T>()` - walks parent chains for path building
+        protected Demo1()
+        {
+            X = new XNamespace(this);
+        }
 
-### Test & Example
+        protected partial class XNamespace
+        {
+            private readonly Demo1 _parent;
 
-- **`PlacesOfInterestMod.IntegrationTests/ClassesWithNamespacesTestCases.cs`**
-  - Integration tests demonstrating the analyzer
-  - Shows the expected usage patterns
-  - Contains test cases: `Demo0`, `Demo1`, `Demo2`
+            protected Demo1 This { get => _parent; }
+
+            protected YNamespace Y { get; }
+
+            internal ZNamespace Z { get; }
+
+            protected XNamespace(Demo1 parent)
+            {
+                _parent = parent;
+                Y = new YNamespace(this);
+                Z = new ZNamespace(this);
+            }
+
+            protected partial class YNamespace
+            {
+                private readonly XNamespace _parent;
+
+                protected XNamespace X { get => _parent; }
+
+                protected Demo1 This { get => _parent._parent; }
+
+                protected YNamespace(XNamespace parent)
+                {
+                    _parent = parent;
+                }
+            }
+
+            internal partial class ZNamespace
+            {
+                private readonly XNamespace _parent;
+
+                internal XNamespace X { get => _parent; }
+
+                internal Demo1 This { get => _parent._parent; }
+
+                internal ZNamespace(XNamespace parent)
+                {
+                    _parent = parent;
+                }
+            }
+        }
+    }
+}
+```
+
+**Key observations:**
+- User code includes `using SourceCodeManagement;` to use the attribute
+- Generated code does NOT include the using directive (not needed in generated file)
+- `Demo1` has explicit `protected` → effective accessibility is `protected`
+- `Demo1` generated class has only `partial` (no accessibility in generated code per Rule 7)
+- `XNamespace` has no explicit modifier → inherits `protected` from `Demo1`
+- `YNamespace` has no explicit modifier → inherits `protected` from `XNamespace` (not `sealed` since `sealed` is not accessibility)
+- `ZNamespace` has explicit `internal` → effective accessibility is `internal`
+- All properties and constructors match their namespace class's effective accessibility
+- Ancestor properties use namespace names: `Demo1 This` (root), `XNamespace X` (parent XNamespace)
