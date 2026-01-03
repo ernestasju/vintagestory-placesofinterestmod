@@ -92,9 +92,10 @@ internal sealed class NamespaceClass
             .AddMembers([
                 .. ParentField(),
                 .. Constructor(),
+                .. ConstructNamespaceClassInstanceMethod(),
+                .. Parents.Select((ancestor, depth) => ancestor.AncestorNamespaceProperty(depth + 1)),
                 .. ChildNamespaceClasses.Select(child => child.ChildNamespaceProperty()),
                 .. ChildNamespaceClasses.Select(child => child.ToClassDeclarationSyntax()),
-                .. Parents.Select((ancestor, depth) => ancestor.AncestorNamespaceProperty(depth + 1)),
             ]);
 
     private IEnumerable<MemberDeclarationSyntax> ParentField()
@@ -118,8 +119,12 @@ internal sealed class NamespaceClass
             yield break;
         }
 
+        var modifiers = Parent is null
+            ? Modifiers([SyntaxKind.InternalKeyword])
+            : Modifiers([SyntaxKind.PrivateKeyword]);
+
         yield return ConstructorDeclaration(ClassName)
-            .WithModifiers(Modifiers([SyntaxKind.PrivateKeyword]))
+            .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList([
                 .. Parent?.ConstructorParameter() ?? []
             ])))
@@ -127,6 +132,29 @@ internal sealed class NamespaceClass
                 .. Parent?.ParentInitializer() ?? [],
                 .. ChildNamespaceClasses.Select(x => x.ChildNamespaceInitializer()),
             ])));
+    }
+
+    private IEnumerable<MemberDeclarationSyntax> ConstructNamespaceClassInstanceMethod()
+    {
+        if (Parent is null)
+        {
+            yield break;
+        }
+
+        // Only nested classes need factory method for reflection-based initialization
+        yield return MethodDeclaration(IdentifierName(ClassName), Identifier("ConstructNamespaceClassInstance"))
+            .WithModifiers(Modifiers([SyntaxKind.PrivateKeyword, SyntaxKind.StaticKeyword]))
+            .WithParameterList(ParameterList(SeparatedList([
+                Parameter(Identifier("parent"))
+                    .WithType(IdentifierName(Parent.ClassName))
+            ])))
+            .WithBody(Block(
+                ReturnStatement(
+                    ObjectCreationExpression(IdentifierName(ClassName))
+                        .WithArgumentList(
+                            ArgumentList(
+                                SingletonSeparatedList(
+                                    Argument(IdentifierName("parent"))))))));
     }
 
     private IEnumerable<ParameterSyntax> ConstructorParameter()
@@ -146,15 +174,37 @@ internal sealed class NamespaceClass
 
     private ExpressionStatementSyntax ChildNamespaceInitializer()
     {
+        var methodCall = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        TypeOfExpression(IdentifierName(ClassName)),
+                        IdentifierName("GetMethod")),
+                    ArgumentList(
+                        SingletonSeparatedList(
+                            Argument(
+                                LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    Literal("ConstructNamespaceClassInstance")))))),
+                IdentifierName("Invoke")),
+            ArgumentList(
+                SeparatedList([
+                    Argument(LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                    Argument(
+                        ArrayCreationExpression(
+                            ArrayType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
+                            InitializerExpression(
+                                SyntaxKind.ArrayInitializerExpression,
+                                SingletonSeparatedList<ExpressionSyntax>(ThisExpression())))),
+                ])));
+
         return ExpressionStatement(
             AssignmentExpression(
                 SyntaxKind.SimpleAssignmentExpression,
                 IdentifierName(NamespaceName),
-                ObjectCreationExpression(IdentifierName(ClassName))
-                    .WithArgumentList(
-                        ArgumentList(
-                            SingletonSeparatedList(
-                                Argument(ThisExpression()))))));
+                CastExpression(IdentifierName(ClassName), methodCall)));
     }
 
     private MemberDeclarationSyntax ChildNamespaceProperty() =>

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36603.0
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11312.210 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlacesOfInterestMod", "PlacesOfInterestMod\PlacesOfInterestMod\PlacesOfInterestMod.csproj", "{21EEB78A-202C-4BC6-8986-00748132BB19}"
 EndProject
@@ -16,6 +16,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlacesOfInterestMod.IntegrationTests", "PlacesOfInterestMod.IntegrationTests\PlacesOfInterestMod.IntegrationTests.csproj", "{1B7C0F3E-EF73-D55D-344A-4DE31DA2768F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SourceCodeManagement", "SourceCodeManagement\SourceCodeManagement.csproj", "{7B22A96E-B7C7-2031-CC74-CD9915904C97}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SourceCodeManagement.Tests", "SourceCodeManagement.Tests\SourceCodeManagement.Tests.csproj", "{2B7CE0FC-2894-40D2-8A86-64F33535A57D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{7B22A96E-B7C7-2031-CC74-CD9915904C97}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7B22A96E-B7C7-2031-CC74-CD9915904C97}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7B22A96E-B7C7-2031-CC74-CD9915904C97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B7CE0FC-2894-40D2-8A86-64F33535A57D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B7CE0FC-2894-40D2-8A86-64F33535A57D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B7CE0FC-2894-40D2-8A86-64F33535A57D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B7CE0FC-2894-40D2-8A86-64F33535A57D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -75,3 +75,25 @@ public sealed class TestPlayerData
             });
     }
 }
+
+//class X
+//{
+//    public X()
+//    {
+//        YProp = Y.CreateNamespaceClassInstance(this);
+//    }
+
+//    private Y YProp { get; }
+
+//    private class Y
+//    {
+//        private Y(X parent) { }
+
+//        public void M() { }
+
+//        private static Y Create(X parent)
+//        {
+//            return new Y(parent);
+//        }
+//    }
+//}
