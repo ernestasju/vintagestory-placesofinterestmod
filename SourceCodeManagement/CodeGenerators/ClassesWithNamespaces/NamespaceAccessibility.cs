@@ -1,29 +1,23 @@
 ﻿using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections.Immutable;
 
 namespace SourceCodeManagement.CodeGenerators.ClassesWithNamespaces;
 
 internal sealed class NamespaceAccessibility
 {
-    public SyntaxKind[] Original { get; }
-    public SyntaxKind[] Effective { get; }
+    public ImmutableArray<SyntaxKind> Original { get; }
+    public ImmutableArray<SyntaxKind> Effective { get; }
 
     public NamespaceAccessibility(ClassDeclarationSyntax classDeclaration, NamespaceClass? parent)
     {
-        Original = classDeclaration.AccessibilityModifiers.ToArray();
+        Original = classDeclaration.AccessibilityModifiers.ToImmutableArray();
 
-        if (Original.Length > 0)
+        Effective = 0 switch
         {
-            Effective = Original;
-            return;
-        }
-
-        if (parent is not null)
-        {
-            Effective = parent.Accessibility.Effective;
-            return;
-        }
-
-        Effective = [ SyntaxKind.PrivateKeyword ];
+            _ when Original is not [] => Original,
+            _ when parent is not null => parent.Accessibility.Effective,
+            _ => [SyntaxKind.PrivateKeyword],
+        };
     }
 }

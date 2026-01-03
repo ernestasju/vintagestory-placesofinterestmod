@@ -28,7 +28,7 @@ internal sealed class NamespaceClass
         var current = new NamespaceClass
         {
             ClassName = classDeclaration.Identifier.Text,
-            ChildNamespaceClasses = System.Array.Empty<NamespaceClass>(),
+            ChildNamespaceClasses = [],
             Parent = parent,
             HasMatchingConstructor = HasConstructorWithExpectedParameters(classDeclaration, parent?.ClassName),
             Accessibility = new NamespaceAccessibility(classDeclaration, parent),
@@ -119,10 +119,9 @@ internal sealed class NamespaceClass
         else if (!HasMatchingConstructor)
         {
             var statements = CreateChildAssignments().ToArray();
-            var ctorModifiers = new[] { SyntaxKind.PublicKeyword };
             members.Add(
                 ConstructorDeclaration(ClassName)
-                    .WithModifiers(TokenList(ctorModifiers.Select(Token)))
+                    .WithModifiers(Modifiers([ SyntaxKind.PrivateKeyword ]))
                     .WithBody(Block(statements)));
         }
 
