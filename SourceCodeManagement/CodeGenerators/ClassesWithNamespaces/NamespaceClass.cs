@@ -78,14 +78,12 @@ internal sealed class NamespaceClass
         };
     }
 
-    public ClassDeclarationSyntax ToClassDeclarationSyntax()
-    {
-        SyntaxKind[] modifierKinds = Parent is null
-            ? [ SyntaxKind.PartialKeyword ]
-            : [ SyntaxKind.PublicKeyword, SyntaxKind.PartialKeyword ];
-
-        return ClassDeclaration(ClassName)
-            .WithModifiers(Modifiers(modifierKinds))
+    public ClassDeclarationSyntax ToClassDeclarationSyntax() =>
+        ClassDeclaration(ClassName)
+            .WithModifiers(Modifiers([
+                .. Parent is null ? [] : Accessibility.Effective,
+                SyntaxKind.PartialKeyword,
+            ]))
             .WithLeadingTrivia(
                 Comments([
                     $"// Namespace name: {NamespaceName}",
@@ -98,7 +96,6 @@ internal sealed class NamespaceClass
                 .. ChildNamespaceClasses.Select(child => child.ToClassDeclarationSyntax()),
                 .. Parents.Select((ancestor, depth) => ancestor.AncestorNamespaceProperty(depth + 1)),
             ]);
-    }
 
     private IEnumerable<MemberDeclarationSyntax> ParentField()
     {
@@ -164,10 +161,10 @@ internal sealed class NamespaceClass
         PropertyDeclaration(
                 IdentifierName(ClassName),
                 Identifier(NamespaceName))
-            .WithModifiers(Modifiers([ SyntaxKind.PublicKeyword ]))
+            .WithModifiers(Modifiers(Accessibility.Effective))
             .WithAccessorList(
                 AccessorList(
-                    SingletonList<AccessorDeclarationSyntax>(
+                    SingletonList(
                         AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))));
 
@@ -176,10 +173,10 @@ internal sealed class NamespaceClass
         PropertyDeclaration(
                 IdentifierName(ClassName),
                 Identifier(NamespaceName))
-            .WithModifiers(Modifiers([ SyntaxKind.PublicKeyword ]))
+            .WithModifiers(Modifiers([ SyntaxKind.PrivateKeyword ]))
             .WithAccessorList(
                 AccessorList(
-                    SingletonList<AccessorDeclarationSyntax>(
+                    SingletonList(
                         AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                             .WithExpressionBody(
                                 ArrowExpressionClause(
