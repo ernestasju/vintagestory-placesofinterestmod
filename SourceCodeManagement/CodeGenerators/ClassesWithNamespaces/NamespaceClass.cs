@@ -61,9 +61,38 @@ internal sealed class NamespaceClass
                     VariableDeclaration(IdentifierName(Parent.ClassName))
                         .AddVariables(VariableDeclarator("_parent")))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword))));
+        }
 
+        if (ChildNamespaceClasses.Count != 0)
+        {
+            members.AddRange(
+                ChildNamespaceClasses
+                    .Select(child =>
+                        PropertyDeclaration(
+                                IdentifierName(child.ClassName),
+                                Identifier(GetNamespacePropertyName(child)))
+                            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                            .WithAccessorList(
+                                AccessorList(
+                                    SingletonList<AccessorDeclarationSyntax>(
+                                        AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))))));
+        }
+
+        if (Parent is not null)
+        {
             if (!HasMatchingConstructor)
             {
+                var statements = new List<StatementSyntax>
+                {
+                    ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName("_parent"),
+                            IdentifierName("parent"))),
+                };
+                statements.AddRange(CreateChildAssignments());
+
                 members.Add(
                     ConstructorDeclaration(ClassName)
                         .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
@@ -72,21 +101,16 @@ internal sealed class NamespaceClass
                                 SingletonSeparatedList(
                                     Parameter(Identifier("parent"))
                                         .WithType(IdentifierName(Parent.ClassName)))))
-                        .WithBody(
-                            Block(
-                                ExpressionStatement(
-                                    AssignmentExpression(
-                                        SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName("_parent"),
-                                        IdentifierName("parent"))))));
+                        .WithBody(Block(statements)));
             }
         }
         else if (!HasMatchingConstructor)
         {
+            var statements = CreateChildAssignments().ToArray();
             members.Add(
                 ConstructorDeclaration(ClassName)
                     .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-                    .WithBody(Block()));
+                    .WithBody(Block(statements)));
         }
 
         if (ChildNamespaceClasses.Count != 0)
@@ -97,6 +121,36 @@ internal sealed class NamespaceClass
         }
 
         return classDeclaration.AddMembers(members.ToArray());
+    }
+
+    private IEnumerable<StatementSyntax> CreateChildAssignments()
+    {
+        if (ChildNamespaceClasses.Count == 0)
+        {
+            yield break;
+        }
+
+        var argumentList = ArgumentList(
+            SingletonSeparatedList(
+                Argument(ThisExpression())));
+
+        foreach (var child in ChildNamespaceClasses)
+        {
+            yield return ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(GetNamespacePropertyName(child)),
+                    ObjectCreationExpression(IdentifierName(child.ClassName))
+                        .WithArgumentList(argumentList)));
+        }
+    }
+
+    private static string GetNamespacePropertyName(NamespaceClass child)
+    {
+        const string suffix = "Namespace";
+        return child.ClassName.EndsWith(suffix)
+            ? child.ClassName.Substring(0, child.ClassName.Length - suffix.Length)
+            : child.ClassName;
     }
 
     private static bool IsNamespaceClass(ClassDeclarationSyntax classDeclaration)
