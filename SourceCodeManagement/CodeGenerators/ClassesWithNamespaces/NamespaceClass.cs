@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -50,7 +51,9 @@ internal sealed class NamespaceClass
     public ClassDeclarationSyntax ToClassDeclarationSyntax()
     {
         var classDeclaration = ClassDeclaration(ClassName)
-            .WithModifiers(TokenList(Token(SyntaxKind.PartialKeyword)));
+            .WithModifiers(TokenList(Token(SyntaxKind.PartialKeyword)))
+            .WithLeadingTrivia(
+                Comment($"// Namespace accessibility: public, Namespace name: {GetNamespaceName()}"));
 
         var members = new List<MemberDeclarationSyntax>();
 
@@ -151,6 +154,16 @@ internal sealed class NamespaceClass
         return child.ClassName.EndsWith(suffix)
             ? child.ClassName.Substring(0, child.ClassName.Length - suffix.Length)
             : child.ClassName;
+    }
+
+    private string GetNamespaceName()
+    {
+        if (Parent is null)
+        {
+            return "This";
+        }
+
+        return GetNamespacePropertyName(this);
     }
 
     private static bool IsNamespaceClass(ClassDeclarationSyntax classDeclaration)
