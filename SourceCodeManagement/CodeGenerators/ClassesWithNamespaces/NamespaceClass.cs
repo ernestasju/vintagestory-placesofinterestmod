@@ -11,6 +11,7 @@ internal sealed class NamespaceClass
     public required string ClassName { get; init; }
     public required IReadOnlyList<NamespaceClass> ChildNamespaceClasses { get; set; }
     public NamespaceClass? Parent { get; init; }
+    public required bool HasMatchingConstructor { get; init; }
 
     private NamespaceClass()
     {
@@ -23,11 +24,14 @@ internal sealed class NamespaceClass
             return null;
         }
 
+        var hasMatchingConstructor = HasConstructorWithExpectedParameters(classDeclaration, parent?.ClassName);
+
         var current = new NamespaceClass
         {
             ClassName = classDeclaration.Identifier.Text,
             ChildNamespaceClasses = System.Array.Empty<NamespaceClass>(),
             Parent = parent,
+            HasMatchingConstructor = hasMatchingConstructor,
         };
 
         var childNamespaceClasses = classDeclaration.Members
@@ -58,23 +62,26 @@ internal sealed class NamespaceClass
                         .AddVariables(VariableDeclarator("_parent")))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword))));
 
-            members.Add(
-                ConstructorDeclaration(ClassName)
-                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-                    .WithParameterList(
-                        ParameterList(
-                            SingletonSeparatedList(
-                                Parameter(Identifier("parent"))
-                                    .WithType(IdentifierName(Parent.ClassName)))))
-                    .WithBody(
-                        Block(
-                            ExpressionStatement(
-                                AssignmentExpression(
-                                    SyntaxKind.SimpleAssignmentExpression,
-                                    IdentifierName("_parent"),
-                                    IdentifierName("parent"))))));
+            if (!HasMatchingConstructor)
+            {
+                members.Add(
+                    ConstructorDeclaration(ClassName)
+                        .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                        .WithParameterList(
+                            ParameterList(
+                                SingletonSeparatedList(
+                                    Parameter(Identifier("parent"))
+                                        .WithType(IdentifierName(Parent.ClassName)))))
+                        .WithBody(
+                            Block(
+                                ExpressionStatement(
+                                    AssignmentExpression(
+                                        SyntaxKind.SimpleAssignmentExpression,
+                                        IdentifierName("_parent"),
+                                        IdentifierName("parent"))))));
+            }
         }
-        else
+        else if (!HasMatchingConstructor)
         {
             members.Add(
                 ConstructorDeclaration(ClassName)
@@ -95,5 +102,26 @@ internal sealed class NamespaceClass
     private static bool IsNamespaceClass(ClassDeclarationSyntax classDeclaration)
     {
         return classDeclaration.Identifier.Text.EndsWith("Namespace");
+    }
+
+    private static bool HasConstructorWithExpectedParameters(ClassDeclarationSyntax classDeclaration, string? parentClassName)
+    {
+        var constructors = classDeclaration.Members.OfType<ConstructorDeclarationSyntax>();
+
+        if (parentClassName is null)
+        {
+            return constructors.Any(ctor => ctor.ParameterList is { Parameters.Count: 0 });
+        }
+
+        return constructors.Any(ctor =>
+        {
+            if (ctor.ParameterList is null || ctor.ParameterList.Parameters.Count != 1)
+            {
+                return false;
+            }
+
+            var parameter = ctor.ParameterList.Parameters[0];
+            return parameter.Type?.ToString() == parentClassName;
+        });
     }
 }
