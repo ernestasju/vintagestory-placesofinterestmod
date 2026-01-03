@@ -53,13 +53,16 @@ internal sealed class NamespaceClass
 
     public ClassDeclarationSyntax ToClassDeclarationSyntax()
     {
+        SyntaxKind[] modifierKinds = Parent is null
+            ? [ SyntaxKind.PartialKeyword ]
+            : [ SyntaxKind.PublicKeyword, SyntaxKind.PartialKeyword ];
+
         var classDeclaration = ClassDeclaration(ClassName)
-            .WithModifiers(
-                Modifiers([SyntaxKind.PublicKeyword, SyntaxKind.PartialKeyword]))
+            .WithModifiers(Modifiers(modifierKinds))
             .WithLeadingTrivia(
                 Comments([
                     $"// Namespace name: {GetNamespaceName()}",
-                    $"// Namespace accessibility: public",
+                    $"// Namespace accessibility: {GetEffectiveAccessibility().ToDisplayString()}",
                     $"// Original class accessibility: {OriginalAccessibility.ToDisplayString()}"]));
 
         var members = new List<MemberDeclarationSyntax>();
@@ -175,6 +178,21 @@ internal sealed class NamespaceClass
         }
 
         return GetNamespacePropertyName(this);
+    }
+
+    private SyntaxKind[] GetEffectiveAccessibility()
+    {
+        if (OriginalAccessibility.Length > 0)
+        {
+            return OriginalAccessibility;
+        }
+
+        if (Parent is not null)
+        {
+            return Parent.GetEffectiveAccessibility();
+        }
+
+        return new[] { SyntaxKind.PrivateKeyword };
     }
 
     private static bool IsNamespaceClass(ClassDeclarationSyntax classDeclaration)
