@@ -9,7 +9,7 @@ static partial class ClassesWithNamespacesTestCases // some of this code will no
         var t0 = new Demo0();
         _ = t0.Some; // should be generated
 
-        var t1 = new NoPartialKeyword();
+        var t1 = new Demo0();
         _ = t1.Some; // should be generated - the generated class should have partial modifier and the compiler will complain to user to add the missing partial modifier
 
         var t2 = new Demo1();
@@ -27,6 +27,13 @@ static partial class ClassesWithNamespacesTestCases // some of this code will no
     {
         partial class SomeNamespace // should generate class with private modifier
         {
+        }
+
+        partial class NotAName_space // this subclass tree should be ignored
+        {
+            partial class SomeOtherNamespace // this should be ignored too
+            {
+            }
         }
     }
 
@@ -72,7 +79,7 @@ static partial class ClassesWithNamespacesTestCases2 // some of this code will n
         var t0 = new Demo0();
         _ = t0.Some; // should be generated
 
-        var t1 = new NoPartialKeyword();
+        var t1 = new Demo0();
         _ = t1.Some; // should be generated - the generated class should have partial modifier and the compiler will complain to user to add the missing partial modifier
 
         var t2 = new Demo1();
