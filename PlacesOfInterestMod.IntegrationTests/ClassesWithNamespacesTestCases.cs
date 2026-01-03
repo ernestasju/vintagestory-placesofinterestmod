@@ -27,6 +27,10 @@ static partial class ClassesWithNamespacesTestCases // some of this code will no
     {
         partial class SomeNamespace // should generate class with private modifier
         {
+            public SomeNamespace(Demo0 parent)
+            {
+                _parent = parent;
+            }
         }
 
         partial class NotAName_space // this subclass tree should be ignored

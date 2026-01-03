@@ -9,32 +9,38 @@ namespace SourceCodeManagement.CodeGenerators.ClassesWithNamespaces;
 internal sealed class NamespaceClass
 {
     public required string ClassName { get; init; }
-    public required IReadOnlyList<NamespaceClass> ChildNamespaceClasses { get; init; }
+    public required IReadOnlyList<NamespaceClass> ChildNamespaceClasses { get; set; }
+    public NamespaceClass? Parent { get; init; }
 
     private NamespaceClass()
     {
     }
 
-    public static NamespaceClass? ParseSyntax(ClassDeclarationSyntax classDeclaration)
+    public static NamespaceClass? ParseSyntax(ClassDeclarationSyntax classDeclaration, NamespaceClass? parent = null)
     {
-        if (classDeclaration is null || classDeclaration.Identifier.Text is null)
+        if (classDeclaration?.Identifier.Text is null)
         {
             return null;
         }
 
+        var current = new NamespaceClass
+        {
+            ClassName = classDeclaration.Identifier.Text,
+            ChildNamespaceClasses = System.Array.Empty<NamespaceClass>(),
+            Parent = parent,
+        };
+
         var childNamespaceClasses = classDeclaration.Members
             .OfType<ClassDeclarationSyntax>()
             .Where(IsNamespaceClass)
-            .Select(ParseSyntax)
+            .Select(child => ParseSyntax(child, current))
             .Where(child => child is not null)
             .Select(child => child!)
             .ToArray();
 
-        return new()
-        {
-            ClassName = classDeclaration.Identifier.Text,
-            ChildNamespaceClasses = childNamespaceClasses,
-        };
+        current.ChildNamespaceClasses = childNamespaceClasses;
+
+        return current;
     }
 
     public ClassDeclarationSyntax ToClassDeclarationSyntax()
@@ -42,15 +48,48 @@ internal sealed class NamespaceClass
         var classDeclaration = ClassDeclaration(ClassName)
             .WithModifiers(TokenList(Token(SyntaxKind.PartialKeyword)));
 
-        if (ChildNamespaceClasses.Count != 0)
+        var members = new List<MemberDeclarationSyntax>();
+
+        if (Parent is not null)
         {
-            classDeclaration = classDeclaration.AddMembers(
-                ChildNamespaceClasses
-                    .Select(child => child.ToClassDeclarationSyntax())
-                    .ToArray());
+            members.Add(
+                FieldDeclaration(
+                    VariableDeclaration(IdentifierName(Parent.ClassName))
+                        .AddVariables(VariableDeclarator("_parent")))
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword))));
+
+            members.Add(
+                ConstructorDeclaration(ClassName)
+                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                    .WithParameterList(
+                        ParameterList(
+                            SingletonSeparatedList(
+                                Parameter(Identifier("parent"))
+                                    .WithType(IdentifierName(Parent.ClassName)))))
+                    .WithBody(
+                        Block(
+                            ExpressionStatement(
+                                AssignmentExpression(
+                                    SyntaxKind.SimpleAssignmentExpression,
+                                    IdentifierName("_parent"),
+                                    IdentifierName("parent"))))));
+        }
+        else
+        {
+            members.Add(
+                ConstructorDeclaration(ClassName)
+                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                    .WithBody(Block()));
         }
 
-        return classDeclaration;
+        if (ChildNamespaceClasses.Count != 0)
+        {
+            members.AddRange(
+                ChildNamespaceClasses
+                    .Select(child => child.ToClassDeclarationSyntax()));
+        }
+
+        return classDeclaration.AddMembers(members.ToArray());
     }
 
     private static bool IsNamespaceClass(ClassDeclarationSyntax classDeclaration)
