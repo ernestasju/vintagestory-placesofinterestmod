@@ -37,6 +37,10 @@ static partial class ClassesWithNamespacesTestCases // some of this code will no
             //}
         }
 
+        partial class Namespace // should also not generate anything because there is no namespace name
+        {
+        }
+
         partial class NotAName_space // this subclass tree should be ignored
         {
             partial class SomeOtherNamespace // this should be ignored too

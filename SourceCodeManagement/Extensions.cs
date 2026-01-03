@@ -116,6 +116,16 @@ internal static partial class Extensions
             return SyntaxFactory.Parameter(Identifier(parameterName))
                 .WithType(ParseTypeName(typeName));
         }
+
+        public static SyntaxTokenList Modifiers(IEnumerable<SyntaxKind> modifierKinds)
+        {
+            return TokenList(modifierKinds.Select(x => Token(x)));
+        }
+
+        public static SyntaxTriviaList Comments(IEnumerable<string> comments)
+        {
+            return TriviaList(comments.Select(x => Comment(x)));
+        }
     }
 
     extension(SyntaxNode @this)
@@ -130,30 +140,47 @@ internal static partial class Extensions
         public bool IsPartial =>
             @this.Modifiers
                 .Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+
+        public IEnumerable<SyntaxKind> AccessibilityModifiers =>
+            @this.Modifiers.Where(x => x.IsAccessibilityModifier).Select(x => x.Kind()).ToArray();
     }
 
     extension(SyntaxToken @this)
     {
-        public bool IsAccessibilityModifier() =>
+        public bool IsAccessibilityModifier =>
             @this.IsKind(SyntaxKind.PublicKeyword) ||
             @this.IsKind(SyntaxKind.PrivateKeyword) ||
             @this.IsKind(SyntaxKind.ProtectedKeyword) ||
             @this.IsKind(SyntaxKind.InternalKeyword);
     }
 
+    extension(IEnumerable<SyntaxToken> @this)
+    {
+        public SyntaxToken GetAccessibilityModifier() =>
+            @this.FirstOrDefault(m => m.IsAccessibilityModifier);
+    }
+
     extension(SyntaxKind @this)
     {
-        public bool IsAccessibilityModifier() =>
+        public bool IsAccessibilityModifier =>
             @this == SyntaxKind.PublicKeyword ||
             @this == SyntaxKind.PrivateKeyword ||
             @this == SyntaxKind.ProtectedKeyword ||
             @this == SyntaxKind.InternalKeyword;
     }
 
-    extension(IEnumerable<SyntaxToken> @this)
+    extension(IEnumerable<SyntaxKind> @this)
     {
-        public SyntaxToken GetAccessibilityModifier() =>
-            @this.FirstOrDefault(m => m.IsAccessibilityModifier());
+        public string ToDisplayString()
+        {
+            string result = string.Join(" ", @this.Select(kind => SyntaxFacts.GetText(kind)));
+            if (string.IsNullOrWhiteSpace(result))
+            {
+                return "<none>";
+            }
+
+            return result;
+        }
     }
 
     extension(INamedTypeSymbol @this)

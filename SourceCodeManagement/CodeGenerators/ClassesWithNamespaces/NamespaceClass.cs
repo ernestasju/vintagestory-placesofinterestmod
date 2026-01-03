@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static SourceCodeManagement.Extensions;
 
 namespace SourceCodeManagement.CodeGenerators.ClassesWithNamespaces;
 
@@ -13,6 +14,7 @@ internal sealed class NamespaceClass
     public required IReadOnlyList<NamespaceClass> ChildNamespaceClasses { get; set; }
     public NamespaceClass? Parent { get; init; }
     public required bool HasMatchingConstructor { get; init; }
+    public required SyntaxKind[] OriginalAccessibility { get; init; }
 
     private NamespaceClass()
     {
@@ -33,6 +35,7 @@ internal sealed class NamespaceClass
             ChildNamespaceClasses = System.Array.Empty<NamespaceClass>(),
             Parent = parent,
             HasMatchingConstructor = hasMatchingConstructor,
+            OriginalAccessibility = classDeclaration.AccessibilityModifiers.ToArray(),
         };
 
         var childNamespaceClasses = classDeclaration.Members
@@ -51,30 +54,36 @@ internal sealed class NamespaceClass
     public ClassDeclarationSyntax ToClassDeclarationSyntax()
     {
         var classDeclaration = ClassDeclaration(ClassName)
-            .WithModifiers(TokenList(Token(SyntaxKind.PartialKeyword)))
+            .WithModifiers(
+                Modifiers([SyntaxKind.PublicKeyword, SyntaxKind.PartialKeyword]))
             .WithLeadingTrivia(
-                Comment($"// Namespace accessibility: public, Namespace name: {GetNamespaceName()}"));
+                Comments([
+                    $"// Namespace name: {GetNamespaceName()}",
+                    $"// Namespace accessibility: public",
+                    $"// Original class accessibility: {OriginalAccessibility.ToDisplayString()}"]));
 
         var members = new List<MemberDeclarationSyntax>();
 
         if (Parent is not null)
         {
+            var fieldModifiers = new[] { SyntaxKind.PrivateKeyword, SyntaxKind.ReadOnlyKeyword };
             members.Add(
                 FieldDeclaration(
                     VariableDeclaration(IdentifierName(Parent.ClassName))
                         .AddVariables(VariableDeclarator("_parent")))
-                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword))));
+                .WithModifiers(TokenList(fieldModifiers.Select(Token))));
         }
 
         if (ChildNamespaceClasses.Count != 0)
         {
+            var propertyModifiers = new[] { SyntaxKind.PublicKeyword };
             members.AddRange(
                 ChildNamespaceClasses
                     .Select(child =>
                         PropertyDeclaration(
                                 IdentifierName(child.ClassName),
                                 Identifier(GetNamespacePropertyName(child)))
-                            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                            .WithModifiers(TokenList(propertyModifiers.Select(Token)))
                             .WithAccessorList(
                                 AccessorList(
                                     SingletonList<AccessorDeclarationSyntax>(
@@ -96,9 +105,10 @@ internal sealed class NamespaceClass
                 };
                 statements.AddRange(CreateChildAssignments());
 
+                var ctorModifiers = new[] { SyntaxKind.PublicKeyword };
                 members.Add(
                     ConstructorDeclaration(ClassName)
-                        .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                        .WithModifiers(TokenList(ctorModifiers.Select(Token)))
                         .WithParameterList(
                             ParameterList(
                                 SingletonSeparatedList(
@@ -110,9 +120,10 @@ internal sealed class NamespaceClass
         else if (!HasMatchingConstructor)
         {
             var statements = CreateChildAssignments().ToArray();
+            var ctorModifiers = new[] { SyntaxKind.PublicKeyword };
             members.Add(
                 ConstructorDeclaration(ClassName)
-                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                    .WithModifiers(TokenList(ctorModifiers.Select(Token)))
                     .WithBody(Block(statements)));
         }
 
