@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="PostSharp" Version="2026.0.4-rc" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SourceCodeManagement\SourceCodeManagement.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

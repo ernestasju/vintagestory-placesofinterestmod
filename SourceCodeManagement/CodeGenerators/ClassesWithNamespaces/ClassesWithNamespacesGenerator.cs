@@ -8,6 +8,8 @@ internal sealed class ClassesWithNamespacesGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterPostInitializationOutput(MarkerAttribute.EmitAttribute);
+        context.RegisterPostInitializationOutput(ChildNamespacePropertyAttribute.EmitAttribute);
+        context.RegisterPostInitializationOutput(ChildNamespacesInitializerAttribute.EmitAttribute);
 
         context.RegisterSourceOutput(
             RootNamespaceClassContainer.FindClassesWithMarkerAttribute(context),

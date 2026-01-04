@@ -1,0 +1,12 @@
+===== BUILD OUTPUT =====
+
+Build succeeded.
+    0 Error(s)
+
+===== RUN OUTPUT =====
+===== TYPE MAP =====
+Program 
+RootWithoutSuffix 
+RootWithoutSuffix+ChildWithoutSuffix 
+TestRunner 
+===== END TYPE MAP =====

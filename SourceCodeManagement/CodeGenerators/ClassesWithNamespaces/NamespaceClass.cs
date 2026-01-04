@@ -80,6 +80,11 @@ internal sealed class NamespaceClass
 
     public ClassDeclarationSyntax ToClassDeclarationSyntax() =>
         ClassDeclaration(ClassName)
+            .WithAttributeLists(
+                SingletonList(
+                    AttributeList(
+                        SingletonSeparatedList(
+                            Attribute(IdentifierName(ChildNamespacesInitializerAttribute.AttributeName))))))
             .WithModifiers(Modifiers([
                 .. Parent is null ? [] : Accessibility.Effective,
                 SyntaxKind.PartialKeyword,
@@ -114,23 +119,18 @@ internal sealed class NamespaceClass
 
     private IEnumerable<MemberDeclarationSyntax> Constructor()
     {
-        if (HasMatchingConstructor)
+        if (HasMatchingConstructor || Parent is null)
         {
             yield break;
         }
 
-        var modifiers = Parent is null
-            ? Modifiers([SyntaxKind.InternalKeyword])
-            : Modifiers([SyntaxKind.PrivateKeyword]);
-
         yield return ConstructorDeclaration(ClassName)
-            .WithModifiers(modifiers)
+            .WithModifiers(Modifiers([SyntaxKind.PrivateKeyword]))
             .WithParameterList(ParameterList(SeparatedList([
                 .. Parent?.ConstructorParameter() ?? []
             ])))
             .WithBody(Block(List([
                 .. Parent?.ParentInitializer() ?? [],
-                .. ChildNamespaceClasses.Select(x => x.ChildNamespaceInitializer()),
             ])));
     }
 
@@ -172,52 +172,25 @@ internal sealed class NamespaceClass
                 IdentifierName("parent")));
     }
 
-    private ExpressionStatementSyntax ChildNamespaceInitializer()
-    {
-        var methodCall = InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                InvocationExpression(
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        TypeOfExpression(IdentifierName(ClassName)),
-                        IdentifierName("GetMethod")),
-                    ArgumentList(
-                        SingletonSeparatedList(
-                            Argument(
-                                LiteralExpression(
-                                    SyntaxKind.StringLiteralExpression,
-                                    Literal("ConstructNamespaceClassInstance")))))),
-                IdentifierName("Invoke")),
-            ArgumentList(
-                SeparatedList([
-                    Argument(LiteralExpression(SyntaxKind.NullLiteralExpression)),
-                    Argument(
-                        ArrayCreationExpression(
-                            ArrayType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
-                            InitializerExpression(
-                                SyntaxKind.ArrayInitializerExpression,
-                                SingletonSeparatedList<ExpressionSyntax>(ThisExpression())))),
-                ])));
-
-        return ExpressionStatement(
-            AssignmentExpression(
-                SyntaxKind.SimpleAssignmentExpression,
-                IdentifierName(NamespaceName),
-                CastExpression(IdentifierName(ClassName), methodCall)));
-    }
-
     private MemberDeclarationSyntax ChildNamespaceProperty() =>
         PropertyDeclaration(
                 IdentifierName(ClassName),
                 Identifier(NamespaceName))
+            .WithAttributeLists(
+                SingletonList(
+                    AttributeList(
+                        SingletonSeparatedList(
+                            Attribute(IdentifierName(ChildNamespacePropertyAttribute.AttributeName))))))
             .WithModifiers(Modifiers(Accessibility.Effective))
             .WithAccessorList(
                 AccessorList(
-                    SingletonList(
+                    List([
                         AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)))));
-
+                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                        AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                            .WithModifiers(Modifiers([SyntaxKind.PrivateKeyword]))
+                            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                    ])));
 
     private MemberDeclarationSyntax AncestorNamespaceProperty(int depth) =>
         PropertyDeclaration(
