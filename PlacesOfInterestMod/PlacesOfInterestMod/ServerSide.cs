@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using PlacesOfInterestMod.Generated;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
@@ -99,15 +100,10 @@ public sealed class ServerSide
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    // NOTE: Arg is guaranteed to exist.
-                    int searchRadius = (int)args[0];
-                    if (searchRadius <= 0)
-                    {
-                        searchRadius = 16;
-                    }
-
                     VintageStoryPlayer player = new(args.Caller.Player);
-                    return HandleChatCommandFindTagsAroundPlayer(player, searchRadius, args.LastArg?.ToString() ?? "");
+
+                    // NOTE: Arg is guaranteed to exist.
+                    return HandleChatCommandFindTagsAroundPlayer(player, (int)args[0], args.LastArg?.ToString() ?? "");
                 });
 
         _serverApi.ChatCommands.Create()
@@ -126,15 +122,10 @@ public sealed class ServerSide
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    // NOTE: Arg is guaranteed to exist.
-                    int searchRadius = (int)args[0];
-                    if (searchRadius <= 0)
-                    {
-                        searchRadius = int.MaxValue;
-                    }
-
                     VintageStoryPlayer player = new(args.Caller.Player);
-                    return HandleChatCommandEditPlaces(player, searchRadius, args.LastArg?.ToString() ?? "");
+
+                    // NOTE: Arg is guaranteed to exist.
+                    return HandleChatCommandEditPlaces(player, (int)args[0], args.LastArg?.ToString() ?? "");
                 });
 
         // NOTE: Commented for later.
@@ -277,6 +268,11 @@ public sealed class ServerSide
         int searchRadius,
         string tags)
     {
+        if (searchRadius <= 0)
+        {
+            searchRadius = 16;
+        }
+
         PlayerPlacesOfInterest poi = new(player);
         (TagQuery searchTagQuery, TagQuery filterTagQuery) = TagQuery.ParseSearchPlacesAndFilterTags(tags);
 
@@ -303,6 +299,11 @@ public sealed class ServerSide
         int searchRadius,
         string tags)
     {
+        if (searchRadius <= 0)
+        {
+            searchRadius = int.MaxValue;
+        }
+
         PlayerPlacesOfInterest poi = new(player);
         (TagQuery searchTagQuery, TagQuery updateTagQuery) = TagQuery.ParseSearchAndUpdate(tags);
 

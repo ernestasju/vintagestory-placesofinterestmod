@@ -79,7 +79,6 @@
 		</PackageReference>
 		<PackageReference Include="SumSharp" Version="2.3.0" />
 		<PackageReference Include="System.ValueTuple" Version="4.6.1" />
-		<ProjectReference Include="..\..\SourceCodeManagement\SourceCodeManagement.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 	<ItemGroup>

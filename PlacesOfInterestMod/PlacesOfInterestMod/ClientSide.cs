@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using PlacesOfInterestMod.Generated;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -53,16 +54,7 @@ public sealed class ClientSide : IClientSide
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
                     // NOTE: Arg is guaranteed to exist.
-                    int searchRadius = (int)args[0];
-
-                    if (searchRadius <= 0)
-                    {
-                        searchRadius = int.MaxValue;
-                    }
-
-                    string tagQueriesText = args.LastArg?.ToString() ?? "";
-
-                    return HandleChatCommandCopyInterestingPlaces(this, searchRadius, tagQueriesText);
+                    return HandleChatCommandCopyInterestingPlaces(this, (int)args[0], args.LastArg?.ToString() ?? "");
                 });
 
         _ = _clientApi.ChatCommands.Create()
@@ -79,7 +71,6 @@ public sealed class ClientSide : IClientSide
             .HandleWith(
                 TextCommandResult (TextCommandCallingArgs args) =>
                 {
-                    // NOTE: Arg is guaranteed to exist.
                     string? existingPlaceActionText = args[0] as string;
 
                     ExistingPlaceAction existingPlaceAction = existingPlaceActionText?.ToLower() switch
@@ -90,6 +81,7 @@ public sealed class ClientSide : IClientSide
                         _ => ExistingPlaceAction.Skip,
                     };
 
+                    // NOTE: Arg is guaranteed to exist.
                     return HandleChatCommandPasteInterestingPlaces(this, existingPlaceAction);
                 });
     }
@@ -122,6 +114,13 @@ public sealed class ClientSide : IClientSide
         int searchRadius,
         string tagQueriesText)
     {
+        if (searchRadius <= 0)
+        {
+            searchRadius = int.MaxValue;
+        }
+
+        tagQueriesText ??= "";
+
         clientSide.SendNetworkPacketToServerSide(new LoadPlacesPacket()
         {
             SearchRadius = searchRadius,

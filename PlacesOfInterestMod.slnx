@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="ruleset.xml" />
+  </Folder>
+  <Project Path="PlacesOfInterestMod/PlacesOfInterestMod/PlacesOfInterestMod.csproj" />
+  <Project Path="PlacesOfInterestMod/ZZCakeBuild/CakeBuild.csproj" />
+</Solution>
