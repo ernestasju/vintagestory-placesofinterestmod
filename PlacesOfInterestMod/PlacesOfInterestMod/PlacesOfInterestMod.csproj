@@ -65,6 +65,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="ExperrrimentalStuff.SourceCodeGenerators" Version="0.1.0-alpha8">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>analyzers; compile</IncludeAssets>
+		</PackageReference>
 		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -84,5 +88,9 @@
 	<ItemGroup>
 		<AdditionalFiles Include="assets\*\lang\*.json" />
 	</ItemGroup>
+
+	<Target Name="StripTypes" AfterTargets="Build">
+		<Exec Command="..\..\RemoveUnwantedTypes\bin\Debug\net10.0\RemoveUnwantedTypes.exe $(TargetPath)" />
+	</Target>
 
 </Project>
