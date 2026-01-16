@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "RemoveUnwantedTypes": {
-      "commandName": "Project",
-      "commandLineArgs": "\"C:\\MY\\NotWork\\PlacesOfInterestMod\\PlacesOfInterestMod\\PlacesOfInterestMod\\bin\\Debug\\Mods\\mod\\PlacesOfInterestMod.dll\""
-    }
-  }
-}

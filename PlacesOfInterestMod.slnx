@@ -5,5 +5,4 @@
   </Folder>
   <Project Path="PlacesOfInterestMod/PlacesOfInterestMod/PlacesOfInterestMod.csproj" />
   <Project Path="PlacesOfInterestMod/ZZCakeBuild/CakeBuild.csproj" />
-  <Project Path="RemoveUnwantedTypes/RemoveUnwantedTypes.csproj" Id="cbbf3431-037e-4d7b-8a1d-107021945b63" />
 </Solution>

@@ -65,9 +65,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ExperrrimentalStuff.SourceCodeGenerators" Version="0.1.0-alpha8">
+		<PackageReference Include="ExperrrimentalStuff.SourceCodeGenerators" Version="0.1.0-alpha21">
 			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>analyzers; compile</IncludeAssets>
+			<IncludeAssets>analyzers; compile; build</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
 			<PrivateAssets>all</PrivateAssets>
@@ -83,14 +83,11 @@
 		</PackageReference>
 		<PackageReference Include="SumSharp" Version="2.3.0" />
 		<PackageReference Include="System.ValueTuple" Version="4.6.1" />
+		<PackageReference Include="Fody" Version="6.9.3" PrivateAssets="All" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<AdditionalFiles Include="assets\*\lang\*.json" />
 	</ItemGroup>
-
-	<Target Name="StripTypes" AfterTargets="Build">
-		<Exec Command="..\..\RemoveUnwantedTypes\bin\Debug\net10.0\RemoveUnwantedTypes.exe $(TargetPath)" />
-	</Target>
 
 </Project>

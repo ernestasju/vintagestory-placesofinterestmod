@@ -7,7 +7,7 @@
         "ernestasju@gmail.com"
     ],
     "description": "Adds a few commands that let you tag and query places. Functions similarly to the maps given by traders. This is very early version so expect bugs.",
-    "version": "0.5.1",
+    "version": "0.5.2",
     "dependencies": {
         "game": "1.21.0"
     }
