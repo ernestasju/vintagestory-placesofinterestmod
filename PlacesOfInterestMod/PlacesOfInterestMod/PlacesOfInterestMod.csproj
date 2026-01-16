@@ -65,9 +65,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ExperrrimentalStuff.SourceCodeGenerators" Version="0.1.0-alpha21">
+		<PackageReference Include="ExperrrimentalStuff.SourceCodeGenerators" Version="0.1.2-alpha">
 			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>analyzers; compile; build</IncludeAssets>
+			<IncludeAssets>compile; build; analyzers</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
 			<PrivateAssets>all</PrivateAssets>
